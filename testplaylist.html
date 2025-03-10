@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Playlist</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <div class="container mx-auto p-6">
+        <h1 id="playlistTitle" class="text-3xl font-bold mb-4"></h1>
+        <div id="playlistSongs" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    </div>
+
+    <!-- Load Audio Player trước khi gọi nó -->
+    <script src="audio_player.js"></script>
+
+    <script>
+         console.log("🔎 Kiểm tra player:", window.player);
+        const API_URL = "http://localhost:3000"; // Cập nhật nếu dùng ngrok
+    
+        document.addEventListener("DOMContentLoaded", () => {
+            if (!window.player) {
+                console.error("❌ window.player chưa được khởi tạo!");
+                return;
+            }
+
+            const playlistData = JSON.parse(sessionStorage.getItem("currentPlaylist"));
+
+            if (!playlistData) {
+                document.body.innerHTML = "<h2 class='text-center text-xl'>Không tìm thấy playlist!</h2>";
+                return;
+            }
+
+            document.getElementById("playlistTitle").textContent = `🎵 ${playlistData.name}`;
+            const playlistContainer = document.getElementById("playlistSongs");
+            playlistContainer.innerHTML = "";
+
+            playlistData.songs.forEach((song, index) => {
+                const songCard = document.createElement("div");
+                songCard.className = "p-4 rounded-lg shadow-md cursor-pointer flex items-center gap-4 bg-gray-800 text-white";
+                
+                songCard.innerHTML = `
+                    <img src="http://localhost:3000/cover/${encodeURIComponent(song.album)}" class="w-16 h-16 object-cover rounded-lg">
+                    <div>
+                        <p class="font-bold">${song.title}</p>
+                        <p class="text-gray-400 text-sm">${song.artist}</p>
+                    </div>
+                `;
+
+                songCard.addEventListener("click", () => {
+                    console.log("🔊 Chọn bài hát:", song);
+                    if (window.player) {
+                        window.player.setPlaylist(playlistData.songs);
+                        window.player.playSongByFilename(song.filename);
+                    } else {
+                        console.error("❌ window.player chưa sẵn sàng!");
+                    }
+                });
+
+                playlistContainer.appendChild(songCard);
+            });
+        });
+    </script>
+</body>
+</html>

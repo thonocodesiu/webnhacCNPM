@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng nhập & Đăng ký</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen">
+    <div class="bg-gray-800 p-8 rounded-lg shadow-lg w-96 animate-fadeIn">
+        <h2 id="formTitle" class="text-3xl font-bold mb-6 text-center text-blue-400">🔑 Đăng nhập</h2>
+        <p id="errorMessage" class="text-red-500 text-center mb-4 hidden"></p>
+        <input id="username" type="text" placeholder="Tên đăng nhập" class="border border-gray-700 bg-gray-700 p-3 w-full mb-4 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-400" required>
+        <input id="password" type="password" placeholder="Mật khẩu" class="border border-gray-700 bg-gray-700 p-3 w-full mb-4 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-400" required>
+        <button id="authBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 w-full rounded-lg shadow-md transition-all duration-300">Đăng nhập</button>
+        <p class="text-gray-400 text-center mt-4">Chưa có tài khoản? <a id="toggleForm" href="#" class="text-blue-400 hover:underline">Đăng ký ngay</a></p>
+    </div>
+
+    <script>
+        if (localStorage.getItem('token')) {
+            window.location.href = 'home.html'; // Redirect to home if already logged in
+        }
+
+        const API_URL = "http://localhost:3000";
+        const authBtn = document.getElementById("authBtn");
+        const toggleForm = document.getElementById("toggleForm");
+        const formTitle = document.getElementById("formTitle");
+        let isLogin = true;
+        
+        toggleForm.addEventListener("click", () => {
+            isLogin = !isLogin;
+            formTitle.textContent = isLogin ? "🔑 Đăng nhập" : "📝 Đăng ký";
+            authBtn.textContent = isLogin ? "Đăng nhập" : "Đăng ký";
+            toggleForm.textContent = isLogin ? "Đăng ký ngay" : "Quay lại đăng nhập";
+        });
+        
+        authBtn.addEventListener("click", async () => {
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+            const errorMessage = document.getElementById("errorMessage");
+            errorMessage.classList.add("hidden");
+            
+            if (!username || !password) {
+                errorMessage.textContent = "❌ Vui lòng nhập đầy đủ thông tin";
+                errorMessage.classList.remove("hidden");
+                return;
+            }
+            
+            authBtn.textContent = isLogin ? "Đang đăng nhập..." : "Đang đăng ký...";
+            authBtn.disabled = true;
+            try {
+                const endpoint = isLogin ? "/login" : "/register";
+                const res = await fetch(`${API_URL}${endpoint}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message || "Lỗi xử lý");
+                
+                if (isLogin) {
+                    localStorage.setItem("token", data.token);
+                    window.location.href = "home.html";
+                } else {
+                    alert("✅ Đăng ký thành công! Vui lòng đăng nhập.");
+                    isLogin = true;
+                    formTitle.textContent = "🔑 Đăng nhập";
+                    authBtn.textContent = "Đăng nhập";
+                    toggleForm.textContent = "Đăng ký ngay";
+                }
+            } catch (err) {
+                errorMessage.textContent = `❌ ${err.message}`;
+                errorMessage.classList.remove("hidden");
+            }
+            authBtn.textContent = isLogin ? "Đăng nhập" : "Đăng ký";
+            authBtn.disabled = false;
+        });
+    </script>
+</body>
+</html>

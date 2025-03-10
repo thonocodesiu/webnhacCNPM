@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WEB NGHE NHẠC CỦA THONO</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            transition: background 0.5s ease-in-out;
+            background-size: cover;
+            background-position: center;
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="glass-effect p-4 text-white flex justify-between items-center shadow-md rounded-lg mx-4 mt-4">
+        <h1 class="text-2xl font-bold">🎵 WEB NGHE NHẠC CỦA THONO</h1>
+        <div>
+            <span id="username" class="mr-4 font-semibold"></span>
+            <button id="logoutBtn" class="bg-red-500 px-4 py-2 rounded shadow-md hover:bg-red-600 transition">Đăng xuất</button>
+            <a href="login.html" id="loginLink" class="bg-green-500 px-4 py-2 rounded shadow-md hover:bg-green-600 transition">Đăng nhập</a>
+        </div>
+    </nav>
+    
+    <div class="container mx-auto p-5">
+        <div class="glass-effect p-6 rounded-lg shadow-lg text-center">
+            <h1 class="text-3xl font-bold mb-4">🎶 Gợi ý bài hát</h1>
+            <ul id="suggestedSongs" class="text-lg font-semibold space-y-2"></ul>
+        </div>
+        
+        <h2 class="text-2xl font-bold text-center mt-8">📀 Danh sách Album</h2>
+        <div id="albumList" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-6"></div>
+    </div>
+    
+    <audio id="audioPlayer" controls class="w-full mt-4 hidden"></audio>
+    
+    <script>
+        const API_URL = "http://localhost:3000";
+        const token = localStorage.getItem("token");
+        const body = document.body;
+        const audioPlayer = document.getElementById("audioPlayer");
+
+        document.addEventListener("DOMContentLoaded", () => {
+            fetch(`${API_URL}/songs`)
+                .then(res => res.json())
+                .then(songs => {
+                    const suggested = songs.sort(() => 0.5 - Math.random()).slice(0, 6);
+                    const suggestedList = document.getElementById("suggestedSongs");
+                    suggestedList.innerHTML = "";
+                    
+                    suggested.forEach(song => {
+                        const li = document.createElement("li");
+                        li.className = "cursor-pointer hover:text-blue-400 transition";
+                        li.textContent = `${song.title} - ${song.artist}`;
+                        li.onclick = () => playSong(song.artist, song.filename);
+                        suggestedList.appendChild(li);
+                    });
+                });
+
+            fetch(`${API_URL}/albums`)
+                .then(res => res.json())
+                .then(albums => {
+                    const albumList = document.getElementById("albumList");
+                    albums.forEach(album => {
+                        const sanitizedAlbum = album.replace(/[%<>:"/\\|?*]+/g, "").trim();
+                        const albumCard = document.createElement("div");
+                        albumCard.className = "relative glass-effect rounded-lg shadow-lg text-center transition transform hover:scale-105 hover:shadow-xl cursor-pointer overflow-hidden";
+                        
+                        const img = document.createElement("img");
+                        img.className = "w-full h-48 object-cover";
+                        img.alt = `Bìa album ${album}`;
+                        albumCard.appendChild(img);
+
+                        const title = document.createElement("div");
+                        title.className = "p-4 text-lg font-bold uppercase bg-gray-900 bg-opacity-50 absolute bottom-0 w-full";
+                        title.textContent = album;
+                        albumCard.appendChild(title);
+
+                        fetch(`${API_URL}/cover/${encodeURIComponent(sanitizedAlbum)}`)
+                            .then(res => res.json())
+                            .then(data => {
+                                img.src = data.coverUrl;
+                            });
+
+                        albumCard.addEventListener("mouseenter", () => {
+                            body.style.backgroundImage = `url('${img.src}')`;
+                        });
+                        
+                        albumCard.addEventListener("mouseleave", () => {
+                            body.style.backgroundImage = "none";
+                        });
+                        
+                        albumList.appendChild(albumCard);
+                    });
+                });
+        });
+
+        function playSong(artist, filename) {
+            audioPlayer.src = `${API_URL}/play/${artist}/${filename}`;
+            audioPlayer.classList.remove("hidden");
+            audioPlayer.play();
+        }
+    </script>
+</body>
+</html>

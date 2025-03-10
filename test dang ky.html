@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Đăng ký</title>
+    <script>
+        async function register() {
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+            const response = await fetch("http://localhost:3000/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, password })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                alert("Đăng ký thành công!");
+                window.location.href = "test dang nhap.html";
+            } else {
+                alert("Tên đăng nhập đã tồn tại hoặc có lỗi xảy ra!");
+            }
+        }
+    </script>
+</head>
+<body>
+    <h2>Đăng ký</h2>
+    <input type="text" id="username" placeholder="Tên đăng nhập"><br>
+    <input type="password" id="password" placeholder="Mật khẩu"><br>
+    <button onclick="register()">Đăng ký</button>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Đăng Nhập</title>
+</head>
+<body>
+    <h2>Trạng thái Token</h2>
+    <div id="tokenStatus" style="padding: 10px; background: #f0f0f0; margin-bottom: 20px;">
+        Token hiện tại: <span id="currentToken">Đang kiểm tra...</span>
+    </div>
+
+    <h2>Đăng Ký</h2>
+    <input type="text" id="registerUsername" placeholder="Tên đăng nhập">
+    <input type="password" id="registerPassword" placeholder="Mật khẩu">
+    <button onclick="register()">Đăng Ký</button>
+    <p id="registerMessage"></p>
+    
+    <h2>Đăng Nhập</h2>
+    <input type="text" id="loginUsername" placeholder="Tên đăng nhập">
+    <input type="password" id="loginPassword" placeholder="Mật khẩu">
+    <button onclick="login()">Đăng Nhập</button>
+    <p id="loginMessage"></p>
+    
+    <h2>Đăng Xuất</h2>
+    <button onclick="logout()">Đăng Xuất</button>
+    <p id="logoutMessage"></p>
+
+    <script>
+        // Hàm cập nhật trạng thái token
+        function updateTokenStatus() {
+            const token = localStorage.getItem('token');
+            const tokenDisplay = document.getElementById('currentToken');
+            
+            if (token) {
+                tokenDisplay.innerHTML = `✅ Đã lưu (${token.substring(0, 15)}...)`;
+                tokenDisplay.style.color = 'green';
+            } else {
+                tokenDisplay.textContent = '❌ Chưa có token';
+                tokenDisplay.style.color = 'red';
+            }
+        }
+
+        // Kiểm tra trạng thái token khi trang tải
+        window.onload = updateTokenStatus;
+        
+        async function register() {
+            const username = document.getElementById('registerUsername').value;
+            const password = document.getElementById('registerPassword').value;
+            
+            try {
+                const res = await fetch('http://localhost:3000/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+                document.getElementById('registerMessage').innerText = data.message;
+            } catch (error) {
+                document.getElementById('registerMessage').innerText = '❌ Lỗi kết nối';
+            }
+        }
+
+        async function login() {
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            try {
+                const res = await fetch('http://localhost:3000/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await res.json();
+                document.getElementById('loginMessage').innerText = data.message;
+                
+                if (data.token) {
+                    localStorage.setItem('token', data.token);
+                    updateTokenStatus(); // Cập nhật trạng thái sau khi lưu
+                }
+            } catch (error) {
+                document.getElementById('loginMessage').innerText = '❌ Lỗi kết nối';
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            document.getElementById('logoutMessage').innerText = '✅ Đăng xuất thành công';
+            updateTokenStatus(); // Cập nhật trạng thái sau khi xóa
+        }
+    </script>
+</body>
+</html>

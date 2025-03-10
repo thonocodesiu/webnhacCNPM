@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Album</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #1a1a1a;
+            color: white;
+        }
+        .container {
+            max-width: 1200px;
+            margin: auto;
+            padding: 20px;
+        }
+        .album-page {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-size: cover; background-position: center;
+            z-index: -1;
+        }
+        .album-page::after {
+            content: ''; position: absolute; inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+        }
+        .song-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px; border-radius: 8px;
+            transition: 0.2s; cursor: pointer;
+        }
+        .song-item:hover { transform: scale(1.05); }
+        .player { position: fixed; bottom: 0; width: 100%; background: rgba(0, 0, 0, 0.8); padding: 15px; display: flex; gap: 20px; align-items: center; }
+        button { background: #1db954; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; transition: 0.3s; }
+        button:hover { opacity: 0.8; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="album-page"></div>
+    <div class="container">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h1 id="albumTitle">Album</h1>
+            <button onclick="logout()">Đăng xuất</button>
+        </div>
+        <div id="songList"></div>
+    </div>
+    <div id="player" class="player hidden">
+        <audio id="audioPlayer" controls></audio>
+        <div id="nowPlaying"></div>
+    </div>
+    <script>
+        const API_URL = 'http://localhost:3000';
+
+        async function apiCall(endpoint, method = 'GET', body = null) {
+            try {
+                const headers = { 'Content-Type': 'application/json' };
+                if (localStorage.getItem('token')) headers['Authorization'] = `Bearer ${localStorage.getItem('token')}`;
+                const response = await fetch(`${API_URL}/${endpoint}`, { method, headers, body: body ? JSON.stringify(body) : null });
+                return response.json();
+            } catch (error) {
+                console.error('API Error:', error);
+                return { success: false };
+            }
+        }
+
+        async function loadAlbum() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const albumName = urlParams.get('name');
+            document.getElementById('albumTitle').innerText = albumName;
+
+            const [songs, cover] = await Promise.all([
+                apiCall(`songs?album=${encodeURIComponent(albumName)}`),
+                apiCall(`cover/${encodeURIComponent(albumName)}`)
+            ]);
+
+            document.getElementById('songList').innerHTML = songs.map(song => `
+                <div class="song-item" onclick="playSong('${song.artist}', '${song.filename}')">
+                    ${song.title} - ${song.artist}
+                </div>
+            `).join('');
+
+            document.querySelector('.album-page').style.backgroundImage = `url(${cover.coverUrl})`;
+        }
+
+        function playSong(artist, filename) {
+            const audioPlayer = document.getElementById('audioPlayer');
+            document.getElementById('player').classList.remove('hidden');
+            audioPlayer.src = `${API_URL}/play/${artist}/${filename}`;
+            document.getElementById('nowPlaying').innerText = `Đang phát: ${filename.replace(/\.[^/.]+$/, "")}`;
+            audioPlayer.play();
+        }
+
+        async function checkAuth() {
+            const data = await apiCall('check-auth');
+            if (data.authenticated) {
+                loadAlbum();
+            } else logout();
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            location.reload();
+        }
+
+        checkAuth();
+    </script>
+</body>
+</html>

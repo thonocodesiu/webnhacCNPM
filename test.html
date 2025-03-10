@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trang Web Nghe Nhạc</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://kit.fontawesome.com/a076d05399.js"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #6ee7b7, #3b82f6);
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .album-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+        }
+
+        .album-card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            background-color: rgba(0, 0, 0, 0.1);
+        }
+
+        .album-img {
+            transition: transform 0.3s ease;
+        }
+
+        .album-img:hover {
+            transform: rotate(10deg);
+        }
+
+        .player-controls {
+            transition: background-color 0.3s ease;
+        }
+
+        .player-controls:hover {
+            background-color: rgba(0, 0, 0, 0.1);
+        }
+
+        .album-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 30px;
+        }
+
+        /* Hiệu ứng fade-in khi scroll */
+        .fade-in {
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        .fade-in.visible {
+            opacity: 1;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-extrabold text-white">Trang Web Nghe Nhạc</h1>
+            <p class="text-lg text-white mt-4">Tận hưởng những bản nhạc yêu thích của bạn</p>
+        </div>
+
+        <!-- Phần Album -->
+        <div class="album-list">
+            <!-- Album 1 -->
+           
+
+            <div class="album-card fade-in" id="album1">
+                <a href="artist-info.html" class="text-blue-600 hover:underline">Xem thông tin nghệ sĩ</a>
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <img src="https://via.placeholder.com/300" alt="Album 1" class="album-img w-full h-56 object-cover rounded-md mb-4">
+                    <h2 class="text-2xl font-semibold text-gray-800">Album 1</h2>
+                    <p class="text-gray-600 mb-4">Tác Giả: Artiste 1</p>
+                    <audio controls class="w-full">
+                        <source src="your-audio-file.mp3" type="audio/mp3">
+                        Trình duyệt của bạn không hỗ trợ thẻ audio.
+                    </audio>
+                    <div class="flex justify-center mt-4">
+                        <button class="player-controls text-2xl text-blue-600">
+                            <i class="fas fa-play"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Album 2 -->
+            <div class="album-card fade-in" id="album2">
+                <a href="artist-info.html" class="text-blue-600 hover:underline">Xem thông tin nghệ sĩ</a>
+
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <img src="https://via.placeholder.com/300" alt="Album 2" class="album-img w-full h-56 object-cover rounded-md mb-4">
+                    <h2 class="text-2xl font-semibold text-gray-800">Album 2</h2>
+                    <p class="text-gray-600 mb-4">Tác Giả: Artiste 2</p>
+                    <audio controls class="w-full">
+                        <source src="your-audio-file.mp3" type="audio/mp3">
+                        Trình duyệt của bạn không hỗ trợ thẻ audio.
+                    </audio>
+                    <div class="flex justify-center mt-4">
+                        <button class="player-controls text-2xl text-blue-600">
+                            <i class="fas fa-play"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Album 3 -->
+          
+
+            <div class="album-card fade-in" id="album3">
+                <a href="artist-info.html" class="text-blue-600 hover:underline">Xem thông tin nghệ sĩ</a>
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <img src="https://via.placeholder.com/300" alt="Album 3" class="album-img w-full h-56 object-cover rounded-md mb-4">
+                    <h2 class="text-2xl font-semibold text-gray-800">Album 3</h2>
+                    <p class="text-gray-600 mb-4">Tác Giả: Artiste 3</p>
+                    <audio controls class="w-full">
+                        <source src="your-audio-file.mp3" type="audio/mp3">
+                        Trình duyệt của bạn không hỗ trợ thẻ audio.
+                    </audio>
+                    <div class="flex justify-center mt-4">
+                        <button class="player-controls text-2xl text-blue-600">
+                            <i class="fas fa-play"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Hiệu ứng fade-in khi cuộn trang
+        const albums = document.querySelectorAll('.fade-in');
+        const options = {
+            threshold: 0.5
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, options);
+
+        albums.forEach(album => {
+            observer.observe(album);
+        });
+    </script>
+
+</body>
+
+</html>
+    

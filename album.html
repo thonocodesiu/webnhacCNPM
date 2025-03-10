@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Album Details</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="audio_player.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flac.js/3.0.6/flac.min.js"></script>
+    <!-- Add loading animation styles -->
+    <style>
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(17, 24, 39, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+        }
+        .loading-spin {
+            width: 50px;
+            height: 50px;
+            border: 3px solid #3b82f6;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .bg-gradient {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.3), rgb(17, 24, 39));
+            z-index: -1;
+        }
+
+        .album-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 100vh;
+            background-size: cover;
+            background-position: center;
+            filter: blur(30px);
+            opacity: 0.3;
+            transition: background-image 0.5s ease;
+            z-index: -2;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+        }
+
+        .song-item {
+            transition: all 0.3s ease;
+        }
+
+        .song-item:hover {
+            transform: translateX(10px);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .playing {
+            background: rgba(59, 130, 246, 0.2);
+            border-left: 4px solid #3b82f6;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease forwards;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <!-- Add background elements -->
+    <div class="album-backdrop"></div>
+    <div class="bg-gradient"></div>
+
+    <!-- Update main content structure -->
+    <div class="container mx-auto p-6">
+        <nav class="mb-8 animate-fade-in" style="animation-delay: 0.1s;">
+            <a href="home.html" class="text-white/70 hover:text-white flex items-center gap-2 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                </svg>
+                Back to Home
+            </a>
+        </nav>
+
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <!-- Album Info Section -->
+            <div class="lg:col-span-1 animate-fade-in" style="animation-delay: 0.2s;">
+                <div class="sticky top-6 text-center lg:text-left">
+                    <img id="albumCover" alt="Album Cover" 
+                         class="w-64 h-64 mx-auto lg:mx-0 rounded-xl shadow-2xl transform transition hover:scale-105">
+                    <h1 id="albumTitle" class="text-4xl font-bold mt-6 mb-2"></h1>
+                    <p id="songCount" class="text-gray-400 mb-4"></p>
+                    <div class="flex justify-center lg:justify-start gap-4">
+                        <button onclick="playSong(0)" class="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-full flex items-center gap-2 transition-colors">
+                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z"/>
+                            </svg>
+                            Play
+                        </button>
+                        <button class="bg-white/10 hover:bg-white/20 text-white px-8 py-3 rounded-full transition-colors">
+                            Shuffle
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Playlist Section -->
+            <div class="lg:col-span-3 animate-fade-in" style="animation-delay: 0.3s;">
+                <div class="glass-card p-6">
+                    <ul id="playlist" class="space-y-2">
+                        <!-- Songs will be loaded here -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="mt-6 flex items-center space-x-4">
+            <!-- <button id="prevBtn" class="bg-blue-500 px-4 py-2 rounded-lg">Prev</button>
+            <button id="playPauseBtn" class="bg-green-500 px-4 py-2 rounded-lg">Play</button>
+            <button id="nextBtn" class="bg-blue-500 px-4 py-2 rounded-lg">Next</button> -->
+        </div>
+    </div>
+
+    <script>
+        //  import { AudioPlayer } from '/code/audio_player.js';
+        //  import { playSong } from '/code/audio_player.js';
+        const API_URL = "http://localhost:3000";
+        let player;
+        let songs = [];
+        let isLoading = true;
+
+        // Get parameters from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const albumName = urlParams.get('album');
+        const playlistName = urlParams.get('playlist');
+
+        // Replace the loadAlbum function
+        async function loadAlbum() {
+            try {
+                if (!albumName && !playlistName) {
+                    throw new Error("Album or playlist name is required");
+                }
+
+                // Initialize audio player if not already done
+                if (!player) {
+                    player = new AudioPlayer(API_URL);
+                }
+
+                if (playlistName) {
+                    await loadPlaylist();
+                } else {
+                    await loadAlbumSongs();
+                }
+
+                // Set the playlist in the player
+                player.setPlaylist(songs);
+
+                // Update UI with animations
+                updateUI();
+                
+                isLoading = false;
+                return true;
+
+            } catch (error) {
+                console.error("Error loading content:", error);
+                alert("Unable to load content: " + error.message);
+                isLoading = false;
+                return false;
+            }
+        }
+
+        async function loadAlbumSongs() {
+            // Fetch album songs
+            const response = await fetch(`${API_URL}/songs?album=${encodeURIComponent(albumName)}`);
+            const data = await response.json();
+
+            if (!data || data.length === 0) {
+                throw new Error("No songs found in this album");
+            }
+
+            songs = data.map(song => ({
+                title: song.title || song.filename.replace(/[!@#$%^&*()_+}|":<>?]/g, '').trim(),
+                artist: song.artist || 'Unknown Artist',
+                filename: song.filename,
+                src: `${API_URL}/play/${encodeURIComponent(song.artist)}/${encodeURIComponent(song.filename)}`
+            }));
+
+            // Load album cover
+            const cleanAlbumName = albumName.replace(/%/g, '').trim();
+            try {
+                const coverResponse = await fetch(`${API_URL}/cover/${encodeURIComponent(cleanAlbumName)}`);
+                const coverData = await coverResponse.json();
+                
+                // Update album cover and backdrop
+                const albumCover = document.getElementById('albumCover');
+                albumCover.src = coverData.coverUrl;
+                document.querySelector('.album-backdrop').style.backgroundImage = `url('${coverData.coverUrl}')`;
+            } catch (error) {
+                console.warn("Could not load album cover:", error);
+                // Set default cover if needed
+            }
+        }
+
+        async function loadPlaylist() {
+            const playlistData = JSON.parse(sessionStorage.getItem('currentPlaylist'));
+            if (!playlistData) {
+                throw new Error("Playlist not found");
+            }
+
+            songs = playlistData.songs;
+            document.getElementById('albumTitle').innerHTML = `${playlistData.icon} ${playlistData.name}`;
+        }
+
+        function updateUI() {
+            document.getElementById('songCount').textContent = `${songs.length} songs`;
+            loadSongs();
+        }
+
+        function loadSongs() {
+            const playlist = document.getElementById("playlist");
+            playlist.innerHTML = '';
+
+            songs.forEach((song, index) => {
+                const li = document.createElement("li");
+                li.className = 'song-item p-4 rounded-lg flex items-center justify-between group';
+                li.style.animation = `fadeIn 0.3s ease forwards ${index * 0.1}s`;
+                li.style.opacity = '0';
+                
+                li.innerHTML = `
+                    <div class="flex items-center gap-4">
+                        <span class="text-white/40 group-hover:text-blue-400 w-6">${index + 1}</span>
+                        <div class="flex flex-col">
+                            <span class="font-medium">${song.title}</span>
+                            <span class="text-sm text-white/60">${song.artist}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <button onclick="playSong(${index})" 
+                                class="opacity-0 group-hover:opacity-100 transition-opacity">
+                            <svg class="w-8 h-8 text-white/60 hover:text-blue-400 transition-colors" 
+                                 fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z"/>
+                            </svg>
+                        </button>
+                    </div>
+                `;
+                playlist.appendChild(li);
+            });
+        }
+
+        async function playSong(index) {
+            try {
+                if (!player) {
+                    throw new Error('Audio player not initialized');
+                }
+                
+                const song = songs[index];
+                if (!song) {
+                    throw new Error('Invalid song index');
+                }
+
+                // Play the song using the player
+                await player.playSong(index);
+                
+                // Update playing state in UI
+                updatePlayingState(index);
+            } catch (error) {
+                console.error('Error playing song:', error);
+                alert('Could not play song: ' + error.message);
+            }
+        }
+
+        // Add this helper function
+        function updatePlayingState(index) {
+            document.querySelectorAll('.song-item').forEach((item, i) => {
+                if (i === index) {
+                    item.classList.add('playing');
+                } else {
+                    item.classList.remove('playing');
+                }
+            });
+        }
+
+        // Update the DOMContentLoaded event listener
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // Show loading screen
+                const loadingDiv = document.createElement('div');
+                loadingDiv.className = 'loading';
+                loadingDiv.innerHTML = '<div class="loading-spin"></div>';
+                document.body.appendChild(loadingDiv);
+
+                // Initialize player and load content
+                const loaded = await loadAlbum();
+                if (!loaded) {
+                    window.location.href = 'home.html';
+                    return;
+                }
+
+                // Remove loading screen
+                loadingDiv.remove();
+
+                // Setup shuffle button
+                const playAllBtn = document.querySelector('button[onclick="playSong(0)"]');
+                const shuffleBtn = playAllBtn.nextElementSibling;
+                shuffleBtn.addEventListener('click', () => {
+                    const randomIndex = Math.floor(Math.random() * songs.length);
+                    playSong(randomIndex);
+                });
+
+                // Listen for track changes
+                document.addEventListener('trackChanged', (e) => {
+                    updatePlayingState(e.detail.currentIndex);
+                });
+
+                // Check for autoplay request
+                const songToPlay = sessionStorage.getItem('playAfterLoad');
+                if (songToPlay) {
+                    const songData = JSON.parse(songToPlay);
+                    sessionStorage.removeItem('playAfterLoad');
+                    
+                    const songIndex = songs.findIndex(song => 
+                        song.filename === songData.filename && 
+                        song.artist === songData.artist
+                    );
+                    
+                    if (songIndex !== -1) {
+                        playSong(songIndex);
+                        const songElements = document.querySelectorAll('.song-item');
+                        if (songElements[songIndex]) {
+                            songElements[songIndex].scrollIntoView({ 
+                                behavior: 'smooth', 
+                                block: 'center' 
+                            });
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Initialization error:', error);
+                alert('Could not initialize player: ' + error.message);
+                document.querySelector('.loading')?.remove();
+            }
+        });
+    </script>
+</body>
+</html>
