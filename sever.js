@@ -271,7 +271,26 @@ app.post("/favorite", authenticateToken, async (req, res) => {
 
     res.status(201).json({ message: "✅ Đã thêm vào danh sách yêu thích!" });
 });
-
+   let isPlaying = false;
+   // Play endpoint
+   app.post('/api/play', (req, res) => {
+       isPlaying = true;
+       res.send({ message: 'Playback started', playing: isPlaying });
+   });
+   // Pause endpoint
+   app.post('/api/pause', (req, res) => {
+       isPlaying = false;
+       res.send({ message: 'Playback paused', playing: isPlaying });
+   });
+   // Status endpoint (optional)
+   app.get('/api/status', (req, res) => {
+       res.send({ playing: isPlaying });
+   });
+   app.delete("/unfavorite", authenticateToken, async (req, res) => {
+    const { title } = req.body;
+    await Favorite.deleteOne({ username: req.user.username, title });
+    res.json({ message: "✅ Đã xóa khỏi yêu thích" });
+});
 app.get("/favorite", authenticateToken, async (req, res) => {
     const username = req.user.username;  // Lấy username từ token
     const favorites = await Favorite.find({ username });
@@ -319,16 +338,9 @@ app.get('/api/playlists/:username', async (req, res) => {
             .select('name songs createdAt')
             .sort({ createdAt: -1 });
 
-        if (!playlists.length) {
-            return res.status(404).json({
-                success: false,
-                message: 'Không tìm thấy playlist nào cho người dùng này'
-            });
-        }
-
         res.status(200).json({
             success: true,
-            data: playlists
+            data: playlists || [] // ✅ Trả về [] nếu user chưa có playlist
         });
 
     } catch (error) {
@@ -339,6 +351,7 @@ app.get('/api/playlists/:username', async (req, res) => {
         });
     }
 });
+
 // Thêm vào server.js
 
 // Thêm bài hát vào playlist tồn tại
@@ -346,21 +359,24 @@ app.put("/playlist/:id", authenticateToken, async (req, res) => {
     try {
         const { songTitle } = req.body;
         const playlist = await Playlist.findById(req.params.id);
-        
+
         if (!playlist) {
             return res.status(404).json({ message: "Playlist không tồn tại" });
         }
 
-        if (!playlist.songs.includes(songTitle)) {
-            playlist.songs.push(songTitle);
-            await playlist.save();
+        if (playlist.songs.includes(songTitle)) {
+            return res.status(400).json({ message: "Bài hát đã có trong playlist!" });
         }
 
-        res.json(playlist);
+        playlist.songs.push(songTitle);
+        await playlist.save();
+
+        res.json({ message: "✅ Đã thêm bài hát vào playlist!", playlist });
     } catch (error) {
         res.status(500).json({ message: "Lỗi server" });
     }
 });
+
 // Thêm vào server.js
 app.get("/verify-token", authenticateToken, (req, res) => {
     res.json({ 
@@ -448,8 +464,23 @@ app.post('/songs/find', async (req, res) => {
         res.status(500).json({ error: "Lỗi server khi tìm bài hát!" });
     }
 });
+   app.use(express.json());
+   // Play endpoint
+   app.post('/api/play', (req, res) => {
+       isPlaying = true;
+       res.send({ message: 'Playback started', playing: isPlaying });
+   });
+   // Pause endpoint
+   app.post('/api/pause', (req, res) => {
+    isPlaying = false;
+    console.log("⏸ API: Nhạc đã dừng!");
+    res.send({ message: 'Playback paused', playing: isPlaying });
+});
 
-
+   // Status endpoint (optional)
+   app.get('/api/status', (req, res) => {
+       res.send({ playing: isPlaying });
+   });
 app.use("/covers", express.static(COVERS_PATH));
 
 app.listen(PORT, () => console.log(`✅ Server chạy tại http://localhost:${PORT}`));

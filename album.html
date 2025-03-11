@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -143,10 +143,8 @@
     </div>
 
     <script>
-        //  import { AudioPlayer } from '/code/audio_player.js';
-        //  import { playSong } from '/code/audio_player.js';
         const API_URL = "http://localhost:3000";
-        let player;
+        let player ;
         let songs = [];
         let isLoading = true;
 
@@ -162,9 +160,9 @@
                     throw new Error("Album or playlist name is required");
                 }
 
-                // Initialize audio player if not already done
-                if (!player) {
-                    player = new AudioPlayer(API_URL);
+                // Ensure `window.player` is always initialized
+                if (!window.player) {
+                    window.player = new AudioPlayer(API_URL);
                 }
 
                 if (playlistName) {
@@ -173,19 +171,18 @@
                     await loadAlbumSongs();
                 }
 
-                // Set the playlist in the player
-                player.setPlaylist(songs);
+                // Check `window.player` before calling `setPlaylist`
+                if (window.player && typeof window.player.setPlaylist === "function") {
+                    window.player.setPlaylist(songs);
+                } else {
+                    console.error("❌ Error: AudioPlayer is not initialized or setPlaylist does not exist!");
+                }
 
-                // Update UI with animations
                 updateUI();
-                
-                isLoading = false;
                 return true;
-
             } catch (error) {
                 console.error("Error loading content:", error);
                 alert("Unable to load content: " + error.message);
-                isLoading = false;
                 return false;
             }
         }
@@ -271,19 +268,18 @@
 
         async function playSong(index) {
             try {
-                if (!player) {
-                    throw new Error('Audio player not initialized');
+                // Ensure `window.player` is initialized
+                if (!window.player) {
+                    console.warn("⚠️ Audio player is not initialized! Initializing...");
+                    window.player = new AudioPlayer(API_URL);
                 }
-                
+
                 const song = songs[index];
                 if (!song) {
                     throw new Error('Invalid song index');
                 }
 
-                // Play the song using the player
-                await player.playSong(index);
-                
-                // Update playing state in UI
+                await window.player.playSong(index);
                 updatePlayingState(index);
             } catch (error) {
                 console.error('Error playing song:', error);
@@ -360,6 +356,20 @@
                 console.error('Initialization error:', error);
                 alert('Could not initialize player: ' + error.message);
                 document.querySelector('.loading')?.remove();
+            }
+        });
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const playPauseBtn = document.getElementById("playPauseBtn");
+
+            if (playPauseBtn) {
+                playPauseBtn.addEventListener("click", () => {
+                    if (window.player) {
+                        window.player.togglePlay();
+                    } else {
+                        console.error("❌ Audio player is not initialized!");
+                    }
+                });
             }
         });
     </script>

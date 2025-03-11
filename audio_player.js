@@ -11,6 +11,7 @@ class AudioPlayer {
         this.volume = 1.0;
         this.currentSongData = null;
         this.previousVolume = 1.0;
+        this.playlists = []; // Store available playlists
         
         this.initializeHowler();
         this.createPlayer();
@@ -28,34 +29,26 @@ class AudioPlayer {
     async playSong(index) {
         try {
             if (!this.playlist || !this.playlist[index]) {
-                throw new Error('Invalid song index or empty playlist');
+                throw new Error("❌ Index bài hát không hợp lệ!");
             }
-
-            // Update current index
+    
+            // Nếu bài hát đang phát lại chính nó -> Chỉ resume thay vì load lại
+            if (this.currentIndex === index && this.sound) {
+                console.log("🔄 Bài hát này đã được phát, resume thay vì load lại!");
+                this.resume();
+                return;
+            }
+    
             this.currentIndex = index;
-
-            // Get song data
             const song = this.playlist[index];
-
-            // Load and play the track
+    
+            console.log(`🎵 Đang phát bài hát: ${song.title}`);
+    
             await this.loadTrack(song.src, song.title, song.artist);
-
-            // Dispatch event for UI updates
-            document.dispatchEvent(new CustomEvent('trackChanged', { 
-                detail: { 
-                    currentIndex: this.currentIndex,
-                    song: song
-                }
-            }));
-
-            // Update player UI
             this.updatePlayPauseUI();
-
-            return true;
+    
         } catch (error) {
-            console.error('Error playing song:', error);
-            this.handleError(error);
-            return false;
+            console.error("❌ Lỗi khi phát bài hát:", error);
         }
     }
 
@@ -69,6 +62,12 @@ class AudioPlayer {
                             <div class="song-title-container overflow-hidden">
                                 <span id="song-title" class="font-bold text-white text-lg truncate">Select a song</span>
                             </div>
+                            <!-- Add playlist button -->
+                            <button id="addToPlaylistBtn" class="text-gray-400 hover:text-white transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                </svg>
+                            </button>
                             <button id="likeBtn" class="text-gray-400 hover:text-red-500 transition-colors">
                                 <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                                     <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
@@ -134,7 +133,41 @@ class AudioPlayer {
                     </div>
                 </div>
             </div>
-        `;
+            
+            <!-- Playlist Modal -->
+            <div id="playlistModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+                <div class="bg-gray-800 p-6 rounded-lg w-96">
+                    <h3 class="text-white text-lg font-bold mb-4">Add to Playlist</h3>
+                    <div id="existingPlaylists" class="mb-4 max-h-60 overflow-y-auto">
+                        <!-- Playlists will be inserted here -->
+                    </div>
+                    <button id="newPlaylistBtn" class="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600 mb-2">
+                        Create New Playlist
+                    </button>
+                    <button id="closePlaylistModal" class="w-full bg-gray-600 text-white py-2 rounded hover:bg-gray-700">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Success Notification -->
+            <div id="successNotification" class="fixed top-4 right-4 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg transform translate-x-full opacity-0 transition-all duration-500 flex items-center">
+                <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span class="font-medium">Đã thêm vào playlist!</span>
+            </div>
+            
+            <!-- Notification System -->
+            <div id="notificationSystem" class="fixed top-4 right-4 z-50 space-y-4">
+                <!-- Success Notification -->
+                <div id="successNotification" class="transform translate-x-full opacity-0 transition-all duration-500 flex items-center bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg">
+                    <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span class="font-medium notification-message">Đã thêm vào playlist!</span>
+                </div>
+            </div>`;
         
         const container = document.createElement("div");
         container.innerHTML = playerHTML;
@@ -158,7 +191,12 @@ class AudioPlayer {
             duration: document.getElementById("duration"),
             playIcon: document.querySelector(".play-icon"),
             pauseIcon: document.querySelector(".pause-icon"),
-            likeBtn: document.getElementById("likeBtn")
+            likeBtn: document.getElementById("likeBtn"),
+            addToPlaylistBtn: document.getElementById("addToPlaylistBtn"),
+            playlistModal: document.getElementById("playlistModal"),
+            closePlaylistModal: document.getElementById("closePlaylistModal"),
+            newPlaylistBtn: document.getElementById("newPlaylistBtn"),
+            existingPlaylists: document.getElementById("existingPlaylists")
         };
 
         this.bindEvents();
@@ -174,6 +212,9 @@ class AudioPlayer {
         this.elements.volumeSlider.addEventListener("input", (e) => this.updateVolume(e.target.value));
         this.elements.progressBar.addEventListener("click", (e) => this.seek(e));
         this.elements.likeBtn.addEventListener("click", () => this.toggleLike());
+        this.elements.addToPlaylistBtn.addEventListener("click", () => this.showPlaylistModal());
+        this.elements.closePlaylistModal.addEventListener("click", () => this.hidePlaylistModal());
+        this.elements.newPlaylistBtn.addEventListener("click", () => this.createNewPlaylist());
 
         // Replace setInterval with more efficient RAF
         this.progressInterval = null;
@@ -202,43 +243,39 @@ class AudioPlayer {
 
         const token = localStorage.getItem("token");
         if (!token) {
-            alert("Please login to like songs");
+            alert("Vui lòng đăng nhập để thêm vào yêu thích");
             return;
         }
 
         try {
-            const likedSongs = JSON.parse(localStorage.getItem('likedSongs') || '[]');
-            const songIndex = likedSongs.findIndex(s => s.title === this.currentSongData.title);
-            
-            if (songIndex === -1) {
-                // Add to liked songs
-                likedSongs.push({
-                    title: this.currentSongData.title,
-                    artist: this.currentSongData.artist,
-                    filename: this.currentSongData.filename
-                });
-                this.elements.likeBtn.classList.add("text-red-500");
-                this.elements.likeBtn.classList.remove("text-gray-400");
-            } else {
-                // Remove from liked songs
-                likedSongs.splice(songIndex, 1);
+            const favorites = await this.getFavorites();
+            const isCurrentlyLiked = favorites.some(fav => fav.title === this.currentSongData.title);
+
+            if (isCurrentlyLiked) {
+                // Remove from favorites using DELETE
+                await this.removeFavorite(this.currentSongData.title);
                 this.elements.likeBtn.classList.remove("text-red-500");
                 this.elements.likeBtn.classList.add("text-gray-400");
+                this.showNotification("Đã xóa khỏi danh sách yêu thích", "warning");
+            } else {
+                // Add to favorites using POST
+                await this.addFavorite(this.currentSongData);
+                this.elements.likeBtn.classList.add("text-red-500");
+                this.elements.likeBtn.classList.remove("text-gray-400");
+                this.showNotification("Đã thêm vào danh sách yêu thích", "like");
             }
 
-            localStorage.setItem('likedSongs', JSON.stringify(likedSongs));
-            
-            // Dispatch event for UI updates
+            // Update UI
             document.dispatchEvent(new CustomEvent('likeStatusChanged', {
                 detail: {
                     title: this.currentSongData.title,
-                    isLiked: songIndex === -1
+                    isLiked: !isCurrentlyLiked
                 }
-        }));
+            }));
 
         } catch (error) {
             console.error("Error toggling like:", error);
-            alert("Could not update like status. Please try again.");
+            this.showNotification("❌ Không thể cập nhật trạng thái yêu thích", "error");
         }
     }
 
@@ -423,35 +460,39 @@ class AudioPlayer {
             console.error("Error checking like status:", error);
         }
     }
-
-    togglePlay() {
-        if (!this.sound) return;
-        
+    
+    async togglePlay() {
         try {
-            if (this.sound.playing()) {
-                this.sound.pause();
-                this.isPlaying = false;
-                if (this.progressInterval) {
-                    cancelAnimationFrame(this.progressInterval);
-                }
-            } else {
-                this.sound.play();
-                this.isPlaying = true;
-                this.startProgressUpdate();
+            if (!this.sound) {
+                console.warn("⚠️ No audio loaded");
+                return;
             }
-            this.updatePlayPauseUI();
+    
+            // Nếu nhạc đang phát → Tạm dừng
+            if (this.sound.playing()) {
+                await this.pause();
+                return; // ✅ Thoát luôn để không chạy xuống resume()
+            }
+    
+            // Nếu nhạc đang tạm dừng → Resume
+            await this.resume();
+            // alert("Xin chào Minh Thông! 🎵"); // ✅ Chỉ hiện khi resume thành công
         } catch (error) {
-            console.error('Error toggling play/pause:', error);
-            this.handleError(error);
+            console.error("❌ Error toggling play/pause:", error);
         }
     }
+    
+    
+
+    
+    
 
     updatePlayPauseUI() {
         const playIcon = this.elements.playIcon;
         const pauseIcon = this.elements.pauseIcon;
-        
+    
         if (!playIcon || !pauseIcon) return;
-
+    
         if (this.isPlaying) {
             playIcon.classList.add("hidden");
             pauseIcon.classList.remove("hidden");
@@ -460,6 +501,7 @@ class AudioPlayer {
             pauseIcon.classList.add("hidden");
         }
     }
+    
 
     formatTime(secs) {
         const minutes = Math.floor(secs / 60);
@@ -589,12 +631,435 @@ class AudioPlayer {
         this.playSongByFilename(this.playlist[this.currentIndex].filename);
     }
 
-    pause() {
-        this.audio.pause();
+    async pause() {
+    try {
+        // Gọi API cập nhật trạng thái trên server
+        const response = await fetch(`${this.apiUrl}/api/pause`, { method: "POST" });
+        const data = await response.json();
+        this.isPlaying = data.playing;
+        
+        // Chỉ tạm dừng bài hát, không xóa this.sound
+        if (this.sound && this.sound.playing()) {
+            this.sound.pause(); // 🛑 Không dùng stop()
+        }
+        
+        // Cập nhật UI
+        this.updatePlayPauseUI();
+        console.log("⏸ Audio paused");
+    } catch (error) {
+        console.error("Error pausing audio:", error);
+    }
+}
+
+    
+    
+
+async resume() {
+    try {
+        // Gọi API để cập nhật trạng thái trên server
+        const response = await fetch(`${this.apiUrl}/api/play`, { method: "POST" });
+        const data = await response.json();
+        this.isPlaying = data.playing;
+
+        // Nếu nhạc chưa được load hoặc không có this.sound, không làm gì cả
+        if (!this.sound) {
+            console.warn("⚠️ Không có bài hát nào để tiếp tục phát!");
+            return;
+        }
+
+        // Kiểm tra nếu nhạc đã dừng nhưng chưa unload, thì chỉ play()
+        if (!this.sound.playing()) {
+            this.sound.play();
+        }
+
+        // Cập nhật UI
+        this.updatePlayPauseUI();
+        console.log("▶ Audio resumed via API & Howler.js (Không load lại track)");
+    } catch (error) {
+        console.error("❌ Error resuming audio:", error);
+    }
+}
+
+
+    
+    async toggleLike() {
+        if (!this.currentSongData || !this.currentSongData.title) {
+            console.warn("No song is currently playing");
+            return;
+        }
+
+        const token = localStorage.getItem("token");
+        if (!token) {
+            alert("Vui lòng đăng nhập để thêm vào yêu thích");
+            return;
+        }
+
+        try {
+            // Check current like status
+            const favorites = await this.getFavorites();
+            const isCurrentlyLiked = favorites.some(fav => fav.title === this.currentSongData.title);
+
+            if (isCurrentlyLiked) {
+                // Remove from favorites
+                await this.removeFavorite(this.currentSongData.title);
+                this.elements.likeBtn.classList.remove("text-red-500");
+                this.elements.likeBtn.classList.add("text-gray-400");
+                this.showNotification("Đã xóa khỏi danh sách yêu thích", "warning");
+            } else {
+                // Add to favorites
+                await this.addFavorite(this.currentSongData);
+                this.elements.likeBtn.classList.add("text-red-500");
+                this.elements.likeBtn.classList.remove("text-gray-400");
+                this.showNotification("Đã thêm vào danh sách yêu thích", "like");
+            }
+
+            // Dispatch event for UI updates
+            document.dispatchEvent(new CustomEvent('likeStatusChanged', {
+                detail: {
+                    title: this.currentSongData.title,
+                    isLiked: !isCurrentlyLiked
+                }
+            }));
+
+        } catch (error) {
+            console.error("Error toggling like:", error);
+            this.handleError("Không thể cập nhật trạng thái yêu thích. Vui lòng thử lại.");
+        }
     }
 
-    resume() {
-        this.audio.play();
+    async getFavorites() {
+        const token = localStorage.getItem("token");
+        if (!token) return [];
+
+        const response = await fetch(`${this.apiUrl}/favorite`, {
+            headers: {
+                "Authorization": `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error("Failed to fetch favorites");
+        }
+
+        return await response.json();
     }
 
+    async addFavorite(songData) {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        const response = await fetch(`${this.apiUrl}/favorite`, {
+            method: 'POST',
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                title: songData.title,
+                artist: songData.artist,
+                filename: songData.filename
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error("Failed to add favorite");
+        }
+
+        return await response.json();
+    }
+
+    async removeFavorite(title) {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        const response = await fetch(`${this.apiUrl}/favorite`, {
+            method: 'DELETE', // Changed from POST to DELETE
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ title })
+        });
+
+        if (!response.ok) {
+            throw new Error("Failed to remove from favorites");
+        }
+
+        return await response.json();
+    }
+
+    
+
+    hidePlaylistModal() {
+        this.elements.playlistModal.classList.add("hidden");
+        this.elements.playlistModal.classList.remove("flex");
+    }
+
+    async createNewPlaylist() {
+    const name = prompt("Nhập tên playlist:");
+    if (!name) return;
+
+    try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            alert("⚠️ Vui lòng đăng nhập!");
+            return;
+        }
+
+        // 🟢 Bước 1: Kiểm tra xem người dùng có playlist chưa
+        const checkResponse = await fetch(`${this.apiUrl}/playlist`, {
+            method: 'GET',
+            headers: { "Authorization": `Bearer ${token}` }
+        });
+
+        if (!checkResponse.ok) {
+            throw new Error(await checkResponse.text());
+        }
+
+        const playlists = await checkResponse.json();
+
+        // 🟢 Bước 2: Nếu không có playlist nào, cho phép tạo mới
+        if (!playlists || playlists.length === 0) {
+            console.log("📂 Người dùng chưa có playlist nào → Cho phép tạo mới!");
+
+            // 🟢 Bước 3: Kiểm tra bài hát đang phát để thêm vào playlist mới
+            if (!this.currentSongData || !this.currentSongData.title) {
+                alert("⚠️ Không có bài hát nào đang phát để thêm vào playlist mới!");
+                return;
+            }
+
+            // 🟢 Bước 4: Gửi yêu cầu tạo playlist
+            const response = await fetch(`${this.apiUrl}/playlist`, {
+                method: 'POST',
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ 
+                    name: name,
+                    description: "Playlist mới",
+                    songs: [this.currentSongData.title] // Thêm bài hát hiện tại vào luôn
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(await response.text());
+            }
+
+            alert("✅ Playlist đã được tạo!");
+            this.hidePlaylistModal();
+            this.showNotification("Đã tạo playlist mới thành công!", "success");
+        } else {
+            alert("❌ Bạn đã có playlist rồi, không thể tạo thêm!");
+        }
+
+    } catch (error) {
+        console.error("❌ Lỗi khi kiểm tra hoặc tạo playlist:", error);
+        this.handleError("Không thể tạo playlist!");
+    }
+}
+
+
+
+    async addToPlaylist(playlistId) {
+        try {
+            const token = localStorage.getItem("token");
+            if (!token) {
+                alert("⚠️ Vui lòng đăng nhập!");
+                return;
+            }
+    
+            if (!this.currentSongData || !this.currentSongData.title) {
+                alert("⚠️ Không có bài hát nào đang phát!");
+                return;
+            }
+    
+            const response = await fetch(`${this.apiUrl}/playlist/${playlistId}`, {
+                method: 'PUT',
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ songTitle: this.currentSongData.title })
+            });
+    
+            const data = await response.json();
+    
+            this.hidePlaylistModal();
+    
+            // Hiện thông báo dựa vào response
+            if (data.duplicate) {
+                this.showNotification("⚠️ Bài hát đã có trong playlist!", "warning");
+            } else if (!response.ok) {
+                throw new Error(data.message || "Không thể thêm bài hát");
+            } else {
+                this.showNotification("✅ Đã thêm vào playlist!", "success");
+            }
+    
+        } catch (error) {
+            console.error("❌ Lỗi khi thêm vào playlist:", error);
+            this.showNotification(`❌ Lỗi: ${error.message}`, "error");
+        }
+    }
+    
+    showNotification(message, type = "success") {
+        const notificationSystem = document.getElementById('notificationSystem');
+        
+        // Create new notification
+        const notification = document.createElement('div');
+        notification.className = `transform translate-x-full opacity-0 transition-all duration-500 flex items-center px-6 py-4 rounded-lg shadow-lg mb-4`;
+        
+        // Set color and icon based on type
+        const colors = {
+            success: "bg-green-500 text-white",
+            error: "bg-red-500 text-white",
+            warning: "bg-yellow-500 text-black",
+            info: "bg-blue-500 text-white",
+            like: "bg-pink-500 text-white"
+        };
+        
+        const icons = {
+            success: `<svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>`,
+            error: `<svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>`,
+            warning: `<svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>`,
+            like: `<svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+            </svg>`
+        };
+
+        notification.className += ` ${colors[type]}`;
+        notification.innerHTML = `
+            ${icons[type] || icons.info}
+            <span class="font-medium">${message}</span>
+        `;
+
+        notificationSystem.appendChild(notification);
+
+        // Animate in
+        setTimeout(() => {
+            notification.classList.remove('translate-x-full', 'opacity-0');
+        }, 100);
+
+        // Animate out and remove after 5s
+        setTimeout(() => {
+            notification.classList.add('translate-x-full', 'opacity-0');
+            setTimeout(() => notification.remove(), 500);
+        }, 5000);
+    }
+    
+
+    async showPlaylistModal() {
+        if (!this.currentSongData) {
+            this.handleError("⚠️ Không có bài hát nào được chọn!");
+            return;
+        }
+    
+        try {
+            const token = localStorage.getItem("token");
+            if (!token) {
+                alert("⚠️ Vui lòng đăng nhập để thêm vào playlist!");
+                return;
+            }
+    
+            // Decode JWT token to get user info
+            const tokenData = JSON.parse(atob(token.split('.')[1]));
+            const username = tokenData.username; // Get username from token
+    
+            // Get user's playlists
+            const response = await fetch(`${this.apiUrl}/api/playlists/${username}`, {
+                headers: { 
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                }
+            });
+    
+            if (!response.ok) {
+                throw new Error("Không thể tải danh sách playlist!");
+            }
+    
+            const data = await response.json();
+            this.playlists = Array.isArray(data.data) ? data.data : []; // Ensure this.playlists is an array
+    
+            // Check if user has any playlists
+            if (!this.playlists || this.playlists.length === 0) {
+                this.elements.existingPlaylists.innerHTML = `
+                    <div class="text-gray-400 text-center py-4">
+                        Bạn chưa có playlist nào. Hãy tạo playlist mới!
+                    </div>
+                `;
+            } else {
+                // Render user's playlists
+                this.renderPlaylistModal();
+            }
+    
+            this.elements.playlistModal.classList.remove("hidden");
+            this.elements.playlistModal.classList.add("flex");
+    
+        } catch (error) {
+            console.error("❌ Lỗi tải danh sách playlist:", error);
+            this.handleError("Không thể tải danh sách playlist!");
+        }
+    }
+
+renderPlaylistModal() {
+    if (!Array.isArray(this.playlists)) {
+        console.error("this.playlists is not an array:", this.playlists);
+        this.elements.existingPlaylists.innerHTML = `
+            <div class="text-gray-400 text-center py-4">
+                Không có playlist nào để hiển thị.
+            </div>
+        `;
+        return;
+    }
+
+    this.elements.existingPlaylists.innerHTML = this.playlists.map(playlist => `
+        <div class="flex items-center justify-between p-2 hover:bg-gray-700 rounded cursor-pointer playlist-item"
+             data-playlist-id="${playlist._id}">
+            <div class="flex flex-col">
+                <span class="text-white font-medium">${playlist.name}</span>
+                <span class="text-gray-400 text-xs">${playlist.songs?.length || 0} bài hát</span>
+            </div>
+            <button class="text-blue-400 hover:text-blue-500 transition-colors px-3 py-1 rounded-full add-to-playlist-btn"
+                    data-playlist-id="${playlist._id}">
+                Thêm
+            </button>
+        </div>
+    `).join('');
+
+    // Thêm event listeners cho các phần tử mới tạo
+    const playlistItems = this.elements.existingPlaylists.querySelectorAll('.playlist-item');
+    playlistItems.forEach(item => {
+        item.addEventListener('click', () => {
+            const playlistId = item.dataset.playlistId;
+            this.addToPlaylist(playlistId);
+        });
+    });
+
+    const addButtons = this.elements.existingPlaylists.querySelectorAll('.add-to-playlist-btn');
+    addButtons.forEach(button => {
+        button.addEventListener('click', (e) => {
+            e.stopPropagation(); // Ngăn event click truyền lên phần tử cha
+            const playlistId = button.dataset.playlistId;
+            this.addToPlaylist(playlistId);
+        });
+    });
+}
+handleError(message, type = "error") {
+    const statusEl = this.elements.playlistModal.querySelector('#playlistStatus');
+    if (statusEl) {
+        statusEl.textContent = message;
+        statusEl.className = `text-center text-sm mb-4 ${type === "error" ? "text-red-500" : "text-green-500"}`;
+        statusEl.classList.remove("hidden");
+        
+        setTimeout(() => {
+            statusEl.classList.add("hidden");
+        }, 3000);
+    }
+}
 }
