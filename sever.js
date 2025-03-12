@@ -352,8 +352,36 @@ app.get('/api/playlists/:username', async (req, res) => {
     }
 });
 
-// Thêm vào server.js
+// Lấy danh sách bài hát theo playlists theo username
+app.get("/api/playlist/:username/:playlistName", authenticateToken, async (req, res) => {
+    try {
+        const { username, playlistName } = req.params;
 
+        // Tìm playlist của user
+        const playlist = await Playlist.findOne({ username, name: playlistName });
+        if (!playlist) {
+            return res.status(404).json({ message: "Playlist không tồn tại!" });
+        }
+
+        // Lấy thông tin chi tiết bài hát từ danh sách `songs`
+        const songs = await Song.find({ title: { $in: playlist.songs } });
+
+        res.json({
+            playlistName: playlist.name,
+            songs: songs.map(song => ({
+                title: song.title,
+                artist: song.artist,
+                album: song.album,
+                duration: song.duration,
+                url: `/play/${encodeURIComponent(song.artist)}/${encodeURIComponent(song.filename)}`
+            }))
+        });
+
+    } catch (error) {
+        console.error("Lỗi khi lấy danh sách bài hát:", error);
+        res.status(500).json({ message: "Lỗi server." });
+    }
+});
 // Thêm bài hát vào playlist tồn tại
 app.put("/playlist/:id", authenticateToken, async (req, res) => {
     try {
@@ -440,7 +468,9 @@ app.post('/songs/find', async (req, res) => {
             error: 'Server error'
         });
     }
-});app.get("/song-by-filename/:filename", async (req, res) => {
+});
+
+app.get("/song-by-filename/:filename", async (req, res) => {
     try {
         let { filename } = req.params;
         filename = decodeURIComponent(filename).trim(); // Giải mã URL và loại bỏ khoảng trắng dư

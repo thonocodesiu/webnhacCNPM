@@ -294,6 +294,14 @@
                     </svg>
                     Khám phá
                 </a>
+                
+                <!-- Add this new Favorites link -->
+                <a href="#" class="flex items-center gap-3 text-gray-300 hover:text-white transition-colors" onclick="showSection('favorites'); return false;">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                    </svg>
+                    Favorites
+                </a>
                 <a href="#" class="flex items-center gap-3 text-gray-300 hover:text-white transition-colors" onclick="showSection('albums'); return false;">
                     <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M19 9H5c-1.1 0-2 .9-2 2v5c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-5c0-1.1-.9-2-2-2zm0 7H5v-5h14v5z"></path>
@@ -372,6 +380,14 @@
             </div>
             <div id="userPlaylists" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <!-- Playlists will be loaded here -->
+            </div>
+        </section>
+
+        <!-- Add new Favorites Section -->
+        <section id="favorites-section" class="hidden mb-12">
+            <h2 class="text-3xl font-bold mb-6">Favorites 🍙</h2>
+            <div id="favoritesList" class="grid grid-cols-1 gap-4">
+                <!-- Favorites will be loaded here -->
             </div>
         </section>
     </main>
@@ -939,6 +955,7 @@ function showRegisterModal() {
             document.getElementById('discover-section').classList.add('hidden');
             document.getElementById('albums-section').classList.add('hidden');
             document.getElementById('playlists-section').classList.add('hidden');
+            document.getElementById('favorites-section').classList.add('hidden');
 
             // Show selected section
             if (sectionName === 'albums') {
@@ -947,6 +964,9 @@ function showRegisterModal() {
             } else if (sectionName === 'playlists') {
                 document.getElementById('playlists-section').classList.remove('hidden');
                 loadUserPlaylists();
+            } else if (sectionName === 'favorites') {
+                document.getElementById('favorites-section').classList.remove('hidden');
+                loadFavorites();
             } else {
                 document.getElementById('discover-section').classList.remove('hidden');
             }
@@ -1103,6 +1123,92 @@ function showRegisterModal() {
         })
         .catch(error => console.error("Lỗi tải playlist:", error));
         }
+
+async function loadFavorites() {
+    try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            alert('Vui lòng đăng nhập để xem bài hát yêu thích!');
+            return;
+        }
+
+        const response = await fetch(`${API_URL}/favorite`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Không thể tải danh sách yêu thích');
+        }
+
+        const favorites = await response.json();
+        const favoritesList = document.getElementById('favoritesList');
+        
+        if (!favorites || favorites.length === 0) {
+            favoritesList.innerHTML = `
+                <div class="text-center text-gray-400 py-8">
+                    Bạn chưa có bài hát yêu thích nào
+                </div>
+            `;
+            return;
+        }
+
+        favoritesList.innerHTML = favorites.map((song, index) => `
+            <div class="glass-effect p-4 rounded-lg flex items-center justify-between group hover:bg-white/10">
+                <div class="flex items-center gap-4">
+                    <span class="text-white/40">${index + 1}</span>
+                    <div>
+                        <h3 class="font-medium">${song.title}</h3>
+                        <p class="text-sm text-gray-400">${song.artist || 'Unknown Artist'}</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <button onclick="playSong('${song.artist || ''}', '${song.filename}')" 
+                            class="text-white/60 hover:text-blue-500 transition-colors">
+                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
+                    </button>
+                    <button onclick="removeFavorite('${song.title}')"
+                            class="text-red-500 hover:text-red-600 transition-colors">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+
+    } catch (error) {
+        console.error('Error loading favorites:', error);
+        showToast('❌ Không thể tải danh sách yêu thích');
+    }
+}
+
+async function removeFavorite(title) {
+    try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        const response = await fetch(`${API_URL}/favorite`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ title })
+        });
+
+        if (!response.ok) throw new Error('Failed to remove favorite');
+
+        showToast('✅ Đã xóa khỏi danh sách yêu thích');
+        loadFavorites(); // Reload favorites list
+    } catch (error) {
+        console.error('Error removing favorite:', error);
+        showToast('❌ Không thể xóa khỏi danh sách yêu thích');
+    }
+}
 
     </script>
 </body>
