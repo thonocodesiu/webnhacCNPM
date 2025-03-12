@@ -101,113 +101,117 @@
 
     <script>
         const API_URL = "http://localhost:3000";
-        let player;
         let songs = [];
-
+    
         document.addEventListener("DOMContentLoaded", async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const playlistId = urlParams.get("id");
+            
+            if (playlistId) {
+                await loadUserPlaylist(playlistId);
+            } else {
+                loadRandomPlaylist();
+            }
+            await fetchSongDetails();
+            displaySongs();
+        });
+    
+        async function loadUserPlaylist(playlistId) {
+            try {
+                const token = localStorage.getItem("token");
+                if (!token) {
+                    alert("⚠️ Bạn chưa đăng nhập! Vui lòng đăng nhập để xem playlist.");
+                    window.location.href = "login.html";
+                    return;
+                }
+    
+                const response = await fetch(`${API_URL}/playlist/${playlistId}`, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+    
+                if (!response.ok) {
+                    throw new Error("Không thể tải playlist!");
+                }
+    
+                const playlistData = await response.json();
+                
+                document.getElementById("playlistTitle").textContent = playlistData.name;
+                document.getElementById("songCount").textContent = `${playlistData.songs.length} bài hát`;
+                songs = playlistData.songs;
+            } catch (error) {
+                console.error("Lỗi khi tải playlist:", error);
+            }
+        }
+    
+        async function fetchSongDetails() {
+    try {
+        if (songs.length === 0) return;
+
+        // Chuyển danh sách bài hát thành query string
+        const songTitles = songs.map(song => encodeURIComponent(song.title)).join(",");
+        const response = await fetch(`${API_URL}/songs?titles=${songTitles}`);
+
+        if (!response.ok) {
+            throw new Error("Không thể lấy thông tin bài hát!");
+        }
+
+        const songData = await response.json();
+
+        // Cập nhật danh sách bài hát với thông tin nghệ sĩ
+        songs = songs.map(song => {
+            const matchedSong = songData.find(s => s.title === song.title);
+            return matchedSong ? { ...song, artist: matchedSong.artist } : song;
+        });
+
+    } catch (error) {
+        console.error("Lỗi khi lấy thông tin bài hát:", error);
+    }
+}
+
+    
+        function loadRandomPlaylist() {
             const playlistData = JSON.parse(sessionStorage.getItem("currentPlaylist"));
             if (!playlistData) {
                 alert("Không tìm thấy playlist!");
                 return;
             }
-
-            // Khởi tạo trình phát nhạc
-            if (!window.player) {
-                window.player = new AudioPlayer(API_URL);
-            }
-
-            songs = playlistData.songs;
-            document.getElementById("playlistTitle").textContent = playlistData.name;
-            document.getElementById("songCount").textContent = `${songs.length} bài hát`;
             
-            // Lưu danh sách bài hát vào mảng
+            document.getElementById("playlistTitle").textContent = playlistData.name;
+            document.getElementById("songCount").textContent = `${playlistData.songs.length} bài hát`;
             songs = playlistData.songs;
-            window.currentPlaylist = songs; // Lưu danh sách bài hát hiện tại vào biến toàn cục
-            // Hiển thị danh sách bài hát
-            loadSongs();
-
-            // Hiển thị ảnh bìa playlist
-            document.getElementById("playlistCover").src = playlistData.cover || "default_cover.jpg";
-            document.querySelector(".playlist-backdrop").style.backgroundImage = `url('${playlistData.cover || "default_cover.jpg"}')`;
-
-            // Cập nhật danh sách vào trình phát
-            window.player.setPlaylist(songs);
-        });
-
-        function loadSongs() {
+        }
+    
+        function displaySongs() {
             const songList = document.getElementById("songsList");
             songList.innerHTML = "";
-
+            
             songs.forEach((song, index) => {
                 const li = document.createElement("li");
                 li.className = "song-item p-4 rounded-lg flex items-center justify-between group";
-                li.style.animation = `fadeIn 0.3s ease forwards ${index * 0.1}s`;
-                li.style.opacity = "0";
-
                 li.innerHTML = `
                     <div class="flex items-center gap-4">
                         <span class="text-white/40 group-hover:text-blue-400 w-6">${index + 1}</span>
                         <div class="flex flex-col">
                             <span class="font-medium">${song.title}</span>
-                            <span class="text-sm text-white/60">${song.artist}</span>
+                            <span class="text-sm text-white/60">${song.artist || "Không rõ"}</span>
                         </div>
                     </div>
-                    <button onclick="playSong(${index})" class="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <a href="${song.url}" class="opacity-0 group-hover:opacity-100 transition-opacity">
                         <svg class="w-8 h-8 text-white/60 hover:text-blue-400 transition-colors" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M8 5v14l11-7z"/>
                         </svg>
-                    </button>
+                    </a>
                 `;
                 songList.appendChild(li);
             });
         }
-
-        async function playSong(index) {
-    if (!window.player) {
-        console.error("❌ Audio player chưa được khởi tạo!");
-        return;
-    }
-
-    const song = songs[index];
-    if (!song || !song.filename) {
-        console.error("❌ Dữ liệu bài hát không hợp lệ!");
-        return;
-    }
-
-    try {
-        // Gọi API để lấy URL chính xác của bài hát
-        const response = await fetch(`${API_URL}/song-by-filename/${encodeURIComponent(song.filename)}`);
-        if (!response.ok) {
-            throw new Error("Không thể tìm thấy bài hát!");
-        }
-
-        const data = await response.json();
-        const songUrl = `${API_URL}${data.url}`;
-
-        console.log("🎵 Phát bài hát:", data.title, "| URL:", songUrl);
-
-        // Phát nhạc bằng AudioPlayer
-        await window.player.loadTrack(songUrl, data.title, data.artist);
-        window.player.playSong();
-
-        // Cập nhật UI trạng thái bài hát đang phát
-        updatePlayingState(index);
-    } catch (error) {
-        console.error("❌ Lỗi khi phát nhạc:", error);
-        alert("Không thể phát bài hát này!");
-    }
-}
-
-
-        function updatePlayingState(index) {
-            document.querySelectorAll('.song-item').forEach((item, i) => {
-                if (i === index) {
-                    item.classList.add('playing');
-                } else {
-                    item.classList.remove('playing');
-                }
-            });
-        }
     </script>
+    
+    <div>
+        <h1 id="playlistTitle" class="text-4xl font-bold mt-6 mb-2"></h1>
+        <p id="songCount" class="text-gray-400 mb-4"></p>
+        <ul id="songsList" class="space-y-2"></ul>
+    </div>
+    
 </body>
 </html>

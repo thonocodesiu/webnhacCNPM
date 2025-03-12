@@ -1013,7 +1013,11 @@ function showRegisterModal() {
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) modal.remove();
             });
-
+            function showToast(message, type = "info") {
+                const toast = document.createElement("div");
+                toast.className = `toast toast-${type}`;
+                toast.innerText = message;
+            }
             document.getElementById('createPlaylistForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const formData = new FormData(e.target);

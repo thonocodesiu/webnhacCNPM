@@ -209,18 +209,19 @@ const playlistSchema = new mongoose.Schema({
 const Playlist = mongoose.model("Playlist", playlistSchema);
 
 app.post("/playlist", authenticateToken, async (req, res) => {
-    const { name, description, songs } = req.body;
+    const { name, description, songs = [] } = req.body;
     const username = req.user.username;
 
-    if (!name || !songs || songs.length === 0) {
-        return res.status(400).json({ message: "❌ Tên playlist và danh sách bài hát là bắt buộc." });
+    if (!name) {
+        return res.status(400).json({ message: "❌ Tên playlist là bắt buộc." });
     }
 
     const playlist = new Playlist({ username, name, description, songs });
     await playlist.save();  
 
-    res.status(201).json({ message: "✅ Playlist đã được tạo!" });
+    res.status(201).json({ message: "✅ Playlist đã được tạo!", playlist });
 });
+
 
 app.get("/playlist", authenticateToken, async (req, res) => {
     const username = req.user.username;
@@ -383,27 +384,90 @@ app.get("/api/playlist/:username/:playlistName", authenticateToken, async (req, 
     }
 });
 // Thêm bài hát vào playlist tồn tại
+async function loadUserPlaylist(playlistId) {
+    try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            alert("⚠️ Bạn chưa đăng nhập! Vui lòng đăng nhập để xem playlist.");
+            window.location.href = "login.html"; // Điều hướng về trang đăng nhập
+            return;
+        }
+
+        const response = await fetch(`${API_URL}/playlist/${playlistId}`, {
+            headers: { "Authorization": `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+            throw new Error("Không thể tải playlist!");
+        }
+
+        const playlistData = await response.json();
+        
+        document.getElementById("playlistTitle").textContent = playlistData.name;
+        document.getElementById("songCount").textContent = `${playlistData.songs.length} bài hát`;
+        songs = playlistData.songs;
+    } catch (error) {
+        console.error("Lỗi khi tải playlist:", error);
+    }
+}
 app.put("/playlist/:id", authenticateToken, async (req, res) => {
     try {
-        const { songTitle } = req.body;
+        const { songTitle, artist } = req.body;
         const playlist = await Playlist.findById(req.params.id);
 
         if (!playlist) {
             return res.status(404).json({ message: "Playlist không tồn tại" });
         }
 
-        if (playlist.songs.includes(songTitle)) {
+        // Kiểm tra xem bài hát đã có trong playlist chưa (dựa trên cả title + artist)
+        const songExists = playlist.songs.some(song => song.title === songTitle && song.artist === artist);
+        if (songExists) {
             return res.status(400).json({ message: "Bài hát đã có trong playlist!" });
         }
 
-        playlist.songs.push(songTitle);
+        // Thêm bài hát mới vào playlist
+        playlist.songs.push({ title: songTitle, artist: artist });
         await playlist.save();
 
         res.json({ message: "✅ Đã thêm bài hát vào playlist!", playlist });
     } catch (error) {
+        console.error("Lỗi khi thêm bài hát:", error);
         res.status(500).json({ message: "Lỗi server" });
     }
 });
+
+// load bài hát theo id playlists
+app.get("/playlist/:id", authenticateToken, async (req, res) => {
+    try {
+        const playlistId = req.params.id;
+
+        // Tìm playlist theo ID
+        const playlist = await Playlist.findById(playlistId);
+        if (!playlist) {
+            return res.status(404).json({ message: "Playlist không tồn tại!" });
+        }
+
+        // Trả về danh sách bài hát đúng định dạng
+        const songList = playlist.songs.map(title => ({
+            title: title, // Giữ nguyên tên bài hát
+            artist: "Chưa có dữ liệu", // Nếu có bảng `Song`, có thể truy vấn thêm
+            album: "Chưa có dữ liệu",
+            duration: "Chưa có dữ liệu",
+            url: `#` // Nếu có file, cập nhật đường dẫn đúng
+        }));
+
+        res.json({
+            name: playlist.name,
+            description: playlist.description || "",
+            songs: songList
+        });
+
+    } catch (error) {
+        console.error("Lỗi khi lấy playlist theo ID:", error);
+        res.status(500).json({ message: "Lỗi server." });
+    }
+});
+
 
 // Thêm vào server.js
 app.get("/verify-token", authenticateToken, (req, res) => {

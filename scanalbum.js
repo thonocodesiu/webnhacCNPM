@@ -4,17 +4,27 @@ const mongoose = require("mongoose");
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
-// Kết nối MongoDB
+
 const app = express();
 const PORT = process.env.PORT || 3000;
-mongoose.connect(mongoURI)
+
+// Kết nối MongoDB
+mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log("✅ Kết nối MongoDB thành công"))
   .catch(err => console.error("❌ Lỗi kết nối MongoDB:", err));
+
 app.use(cors());
 app.use(express.json());
 
-  
-// Định nghĩa schema album
+// Định nghĩa schema
+const ArtistSchema = new mongoose.Schema({
+    name: String,
+    genre: { type: String, default: null },
+    bio: { type: String, default: null },
+    avatar: String,
+    albums: [String]
+});
+
 const AlbumSchema = new mongoose.Schema({
     album: String,
     artist: String,
@@ -22,9 +32,21 @@ const AlbumSchema = new mongoose.Schema({
     cover: String
 });
 
+const Artist = mongoose.model("Artist", ArtistSchema);
 const Album = mongoose.model("Album", AlbumSchema);
 
-// Thư mục gốc chứa tất cả nghệ sĩ
+// API GET /songs để lấy danh sách bài hát
+app.get("/songs", async (req, res) => {
+    try {
+        const albums = await Album.find();
+        res.json(albums);
+    } catch (error) {
+        console.error("❌ Lỗi khi lấy danh sách bài hát:", error);
+        res.status(500).json({ message: "Lỗi server" });
+    }
+});
+
+// Thư mục chứa nhạc
 const MUSIC_DIR = "H:/cai dat/web nhac/nhac/";
 
 async function scanAlbums() {
@@ -34,13 +56,27 @@ async function scanAlbums() {
         const artistPath = path.join(MUSIC_DIR, artistName);
         const albums = fs.readdirSync(artistPath).filter(album => fs.statSync(path.join(artistPath, album)).isDirectory());
 
+        // Kiểm tra nghệ sĩ có trong DB chưa
+        let artistRecord = await Artist.findOne({ name: artistName });
+        if (!artistRecord) {
+            artistRecord = new Artist({
+                name: artistName,
+                genre: null,
+                bio: null,
+                avatar: `/static/artists/${artistName}.jpg`,
+                albums: []
+            });
+            await artistRecord.save();
+            console.log(`✅ Nghệ sĩ mới: ${artistName} đã được lưu!`);
+        }
+
         for (const albumName of albums) {
             const albumPath = path.join(artistPath, albumName);
             const files = fs.readdirSync(albumPath);
 
-            // Tìm ảnh bìa (ưu tiên cover.jpg hoặc cover.png)
+            // Tìm ảnh bìa album
             const coverImage = files.find(file => file.startsWith("cover") && (file.endsWith(".jpg") || file.endsWith(".png"))) || "no-cover.jpg";
-            const coverUrl = `/static/${artistName}/${albumName}/${coverImage}`; // Đường dẫn API hiển thị cover
+            const coverUrl = `/static/${artistName}/${albumName}/${coverImage}`;
 
             // Đếm số bài hát
             const songCount = files.filter(file => file.endsWith(".mp3") || file.endsWith(".wav")).length;
@@ -48,13 +84,19 @@ async function scanAlbums() {
             if (songCount > 0) {
                 const newAlbum = new Album({
                     album: albumName,
-                    artist: artistName, // Lấy tên nghệ sĩ từ thư mục cha
+                    artist: artistName,
                     song_count: songCount,
                     cover: coverUrl
                 });
 
                 await Album.findOneAndUpdate({ album: albumName, artist: artistName }, newAlbum, { upsert: true });
                 console.log(`✅ Album: ${albumName} - Nghệ sĩ: ${artistName} (Bài hát: ${songCount}) đã được lưu.`);
+
+                // Cập nhật danh sách album của nghệ sĩ
+                if (!artistRecord.albums.includes(albumName)) {
+                    artistRecord.albums.push(albumName);
+                    await artistRecord.save();
+                }
             }
         }
     }

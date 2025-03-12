@@ -832,39 +832,23 @@ async resume() {
     }
 
     async createNewPlaylist() {
-    const name = prompt("Nhập tên playlist:");
-    if (!name) return;
-
-    try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-            alert("⚠️ Vui lòng đăng nhập!");
-            return;
-        }
-
-        // 🟢 Bước 1: Kiểm tra xem người dùng có playlist chưa
-        const checkResponse = await fetch(`${this.apiUrl}/playlist`, {
-            method: 'GET',
-            headers: { "Authorization": `Bearer ${token}` }
-        });
-
-        if (!checkResponse.ok) {
-            throw new Error(await checkResponse.text());
-        }
-
-        const playlists = await checkResponse.json();
-
-        // 🟢 Bước 2: Nếu không có playlist nào, cho phép tạo mới
-        if (!playlists || playlists.length === 0) {
-            console.log("📂 Người dùng chưa có playlist nào → Cho phép tạo mới!");
-
-            // 🟢 Bước 3: Kiểm tra bài hát đang phát để thêm vào playlist mới
+        const name = prompt("Nhập tên playlist:");
+        if (!name) return;
+    
+        try {
+            const token = localStorage.getItem("token");
+            if (!token) {
+                alert("⚠️ Vui lòng đăng nhập!");
+                return;
+            }
+    
+            // 🟢 Kiểm tra bài hát đang phát để thêm vào playlist mới
             if (!this.currentSongData || !this.currentSongData.title) {
                 alert("⚠️ Không có bài hát nào đang phát để thêm vào playlist mới!");
                 return;
             }
-
-            // 🟢 Bước 4: Gửi yêu cầu tạo playlist
+    
+            // 🟢 Gửi yêu cầu tạo playlist mới
             const response = await fetch(`${this.apiUrl}/playlist`, {
                 method: 'POST',
                 headers: {
@@ -877,23 +861,21 @@ async resume() {
                     songs: [this.currentSongData.title] // Thêm bài hát hiện tại vào luôn
                 })
             });
-
+    
             if (!response.ok) {
                 throw new Error(await response.text());
             }
-
+    
             alert("✅ Playlist đã được tạo!");
             this.hidePlaylistModal();
-            this.showNotification("Đã tạo playlist mới thành công!", "success");
-        } else {
-            alert("❌ Bạn đã có playlist rồi, không thể tạo thêm!");
+            this.showNotification(`Đã tạo playlist '${name}' thành công!`, "success");
+    
+        } catch (error) {
+            console.error("❌ Lỗi khi tạo playlist:", error);
+            this.handleError("Không thể tạo playlist!");
         }
-
-    } catch (error) {
-        console.error("❌ Lỗi khi kiểm tra hoặc tạo playlist:", error);
-        this.handleError("Không thể tạo playlist!");
     }
-}
+    
 
 
 
