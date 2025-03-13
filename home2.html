@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WEB NGHE NHẠC CỦA THONO</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+   s
+    <style>
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes smoothFade {
+            0% { 
+                filter: brightness(0.8);
+            }
+            100% { 
+                filter: brightness(1);
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        body {
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            background-size: cover;
+            background-position: center;
+        }
+
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s ease;
+        }
+
+        .glass-effect:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Add new playlist modal styles */
+        .playlist-modal {
+            animation: fadeIn 0.3s ease;
+        }
+
+        .playlist-list {
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        .fade-in {
+            opacity: 0;
+            animation: slideIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        aside {
+            transform: translateX(-90%); /* Hide most of sidebar by default */
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 0.9;
+            will-change: transform;
+        }
+
+        aside:hover {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .sidebar-peek {
+            position: absolute;
+            right: -48px; /* Width of the peek area */
+            top: 0;
+            bottom: 0;
+            width: 48px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.7);
+            transition: opacity 0.3s ease;
+        }
+
+        aside:hover .sidebar-peek {
+            opacity: 0;
+        }
+
+        .hover-indicator {
+            position: absolute;
+            right: -24px;
+            top: 50%;
+            transform: translateY(-50%);
+            opacity: 0.7;
+            transition: opacity 0.3s ease;
+        }
+
+        aside:hover .hover-indicator {
+            opacity: 0;
+        }
+
+        .play-button {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .play-button:hover {
+            animation: pulse 1s infinite;
+            background: rgb(59, 130, 246);
+            transform: scale(1.1);
+        }
+
+        .album-card {
+            opacity: 1 !important;
+            transform: none !important;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 1.25rem;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(12px);
+            padding: 0.75rem;
+            max-width: 220px;
+            margin: 0 auto;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .album-card:hover {
+            transform: translateY(-8px) scale(1.02) !important;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            border-color: rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .album-card img {
+            aspect-ratio: 1;
+            width: 100%;
+            border-radius: 1rem;
+            object-fit: cover;
+            transition: all 0.4s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            position: relative;
+            z-index: 1;
+        }
+
+        .album-card:hover img {
+            transform: scale(1.05);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        }
+
+        .album-title {
+            font-size: 1rem;
+            font-weight: 500;
+            padding: 1rem 0.5rem;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.9);
+            background: none;
+            transform: none !important;
+            position: relative !important;
+            opacity: 0.9;
+            transition: opacity 0.3s ease;
+        }
+
+        .bg-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: -1;
+            opacity: 0;
+            background-size: cover;
+            background-position: center;
+            filter: blur(50px); /* Increase blur effect */
+            transition: opacity 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .bg-overlay.active {
+            opacity: 0.2; /* Reduce opacity for more subtle effect */
+            animation: smoothFade 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        .bg-gradient {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(
+                to bottom,
+                rgba(17, 24, 39, 0.95), /* More opaque at top */
+                rgba(17, 24, 39, 0.98)  /* More opaque at bottom */
+            );
+            z-index: -1;
+            pointer-events: none;
+            transition: opacity 0.8s ease-in-out;
+        }
+
+        /* Add new styles for the top bar */
+        .top-bar {
+            position: fixed;
+            top: 0.75rem; /* Add margin from top */
+            left: 1rem;
+            right: 1rem;
+            z-index: 50;
+            background: rgba(255, 255, 255, 0.2); /* More transparent */
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem; /* Rounded corners */
+            transition: all 0.3s ease;
+            padding: 0.75rem 1.5rem;
+        }
+
+        .top-bar:hover {
+            background: rgba(255, 255, 255, 0.25); /* Slightly less transparent on hover */
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .top-bar::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(to right, #3b82f6, #60a5fa);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+            transform-origin: left;
+            border-bottom-left-radius: 1rem;
+            border-bottom-right-radius: 1rem;
+        }
+
+        /* Adjust main content margin to account for new top bar position */
+        .main-content {
+            margin-top: 6rem;
+        }
+
+        .loading-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(
+                90deg,
+                rgba(255,255,255,0.03) 25%,
+                rgba(255,255,255,0.08) 50%,
+                rgba(255,255,255,0.03) 75%
+            );
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .album-card img {
+            transition: all 0.5s ease;
+        }
+
+        .album-card img.loading {
+            filter: blur(10px);
+        }
+
+        .album-card.loading .loading-overlay {
+            opacity: 1;
+        }
+        .loading-effect {
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(8px);
+            border-radius: 1rem;
+            z-index: 2;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .loading img {
+            filter: blur(4px);
+        }
+
+        .loading .loading-effect {
+            opacity: 1;
+        }
+        
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <div class="bg-gradient"></div>
+    <div class="bg-overlay"></div>
+    
+    <!-- Sidebar Navigation -->
+    <aside class="fixed left-0 top-0 h-full w-64 bg-black bg-opacity-90 backdrop-blur-lg z-50">
+        <!-- Add peek area -->
+        <div class="sidebar-peek">
+            Menu
+        </div>
+        
+        <!-- Add hover indicator -->
+        <div class="hover-indicator">
+            <svg class="w-6 h-6 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+        </div>
+
+        <!-- Existing sidebar content -->
+        <div class="p-6">
+            <h1 class="text-2xl font-bold flex items-center gap-2 mb-8">
+                <span class="text-blue-500">🎵</span>
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-600">
+                    THONO MUSIC
+                </span>
+            </h1>
+            
+            <nav class="space-y-4">
+                <a href="#" class="flex items-center gap-3 text-gray-300 hover:text-white transition-colors" onclick="showSection('discover'); return false;">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+                    </svg>
+                    Khám phá
+                </a>
+                
+                <!-- Add this new Favorites link -->
+                <a href="#" class="flex items-center gap-3 text-gray-300 hover:text-white transition-colors" onclick="showSection('favorites'); return false;">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                    </svg>
+                    Favorites
+                </a>
+                <a href="#" class="flex items-center gap-3 text-gray-300 hover:text-white transition-colors" onclick="showSection('albums'); return false;">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M19 9H5c-1.1 0-2 .9-2 2v5c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-5c0-1.1-.9-2-2-2zm0 7H5v-5h14v5z"></path>
+                    </svg>
+                    Album
+                </a>
+                <a href="#" class="flex items-center gap-3 text-gray-300 hover:text-white transition-colors" onclick="showSection('playlists'); return false;">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"></path>
+                    </svg>
+                    Playlist
+                </a>
+            </nav>
+        </div>
+
+        <!-- User Profile Section -->
+        <div class="absolute bottom-0 left-0 right-0 p-6 bg-black bg-opacity-90">
+            <div class="flex items-center gap-4">
+                <div id="userContainer" class="glass-effect px-4 py-2 rounded-lg flex items-center gap-2 flex-1">
+                    <span class="text-xl">👤</span>
+                    <span id="username" class="font-semibold truncate"></span>
+                    <button id="loginLink" onclick="showLoginModal()" 
+                        class="text-blue-400 hover:text-blue-500 ml-2">
+                        Đăng nhập
+                    </button>
+                </div>
+                <button id="logoutBtn" style="display: none" 
+                    class="bg-red-500 p-2 rounded-full hover:bg-red-600 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="ml-64 p-8">
+        <!-- Featured Section - Default view -->
+        <section id="discover-section" class="mb-12">
+            <h2 class="text-3xl font-bold mb-6">Được nghe nhiều 🔥</h2>
+            <div id="suggestedSongs" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            
+            <!-- Albums Section -->
+            <section class="mt-12">
+                <h2 class="text-3xl font-bold mb-6">Album nổi bật ✨</h2>
+                <div id="albumList" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6"></div>
+            </section>
+
+            <!-- Add Playlists Section -->
+            <section class="mt-12">
+                <h2 class="text-3xl font-bold mb-6">Playlist cho bạn 🎵</h2>
+                <div id="playlistContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            </section>
+        </section>
+
+        <!-- All Albums Section -->
+        <section id="albums-section" class="hidden mb-12">
+            <h2 class="text-3xl font-bold mb-6">Tất cả Album 💿</h2>
+            <div id="allAlbumsList" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6"></div>
+        </section>
+
+        <!-- Add new Playlists Section -->
+        <section id="playlists-section" class="hidden mb-12">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-bold">Playlist của bạn 🎵</h2>
+                <button onclick="showCreatePlaylistModal()" 
+                        class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Tạo Playlist
+                </button>
+            </div>
+            <div id="userPlaylists" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Playlists will be loaded here -->
+            </div>
+        </section>
+
+        <!-- Add new Favorites Section -->
+        <section id="favorites-section" class="hidden mb-12">
+            <h2 class="text-3xl font-bold mb-6">Favorites 🍙</h2>
+            <div id="favoritesList" class="grid grid-cols-1 gap-4">
+                <!-- Favorites will be loaded here -->
+            </div>
+        </section>
+    </main>
+    
+    <script>
+     
+        const API_URL = "http://localhost:3000";
+        const token = localStorage.getItem("token");
+        const body = document.body;
+        let player; // Change to let since we'll initialize it after DOM loads
+
+        function handleLogout() {
+            fetch(`${API_URL}/logout`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                // Remove token
+                localStorage.removeItem('token');
+                
+                // Update UI elements
+                document.getElementById('username').textContent = '';
+                document.getElementById('logoutBtn').style.display = 'none';
+                document.getElementById('loginLink').style.display = 'block';
+                
+                // Optional: Redirect to login page
+                // window.location.href = 'login.html';
+            })
+            .catch(error => {
+                console.error('Logout error:', error);
+                // Still perform UI updates even if server request fails
+                localStorage.removeItem('token');
+                document.getElementById('username').textContent = '';
+                document.getElementById('logoutBtn').style.display = 'none';
+                document.getElementById('loginLink').style.display = 'block';
+            });
+        }
+        function changeBackground(url) {
+            if (currentBg === url) return;
+            currentBg = url;
+            
+            const newBg = document.createElement('div');
+            newBg.className = 'bg-overlay';
+            newBg.style.backgroundImage = `url('${url}')`;
+            document.body.appendChild(newBg);
+            
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    newBg.classList.add('active');
+                });
+            });
+            
+            const oldBg = document.querySelector('.bg-overlay.active');
+            if (oldBg && oldBg !== newBg) {
+                oldBg.style.opacity = '0';
+                setTimeout(() => oldBg.remove(), 1200);
+            }
+        }       
+
+        document.addEventListener("DOMContentLoaded", () => {
+            // Initialize player after DOM loads
+            
+            // const audioPlayer = document.getElementById("audioPlayer"); // Remove this line
+
+            fetch(`${API_URL}/songs`)
+                .then(res => res.json())
+                .then(songs => {
+                    const suggested = songs.sort(() => 0.5 - Math.random()).slice(0, 6);
+                    const suggestedList = document.getElementById("suggestedSongs");
+                    suggestedList.innerHTML = "";
+                    
+                    // Update the suggested songs section
+                    suggested.forEach((song) => {
+                        const songCard = document.createElement("div");
+                        songCard.className = "glass-effect p-4 rounded-lg shadow-md flex items-center justify-between cursor-pointer";
+                        // Remove animation styles
+                        songCard.innerHTML = `
+                            <span class='font-bold'>${song.title} - ${song.artist}</span>
+                            <button class='play-button bg-blue-500 px-3 py-1 rounded' onclick='playSong("${song.artist}", "${song.filename}")'>▶ Phát</button>
+                        `;
+                        suggestedList.appendChild(songCard);
+                    });
+                });
+
+            const bgOverlay = document.querySelector('.bg-overlay');
+            let currentBg = null;
+            
+            function changeBackground(url) {
+                if (currentBg === url) return;
+                currentBg = url;
+                
+                const newBg = document.createElement('div');
+                newBg.className = 'bg-overlay';
+                newBg.style.backgroundImage = `url('${url}')`;
+                document.body.appendChild(newBg);
+                
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        newBg.classList.add('active');
+                    });
+                });
+                
+                const oldBg = document.querySelector('.bg-overlay.active');
+                if (oldBg && oldBg !== newBg) {
+                    oldBg.style.opacity = '0';
+                    setTimeout(() => oldBg.remove(), 1200);
+                }
+            }
+
+            fetch(`${API_URL}/albums`)
+                .then(res => res.json())
+                .then(albums => {
+                    // Get 5 random albums
+                    const randomAlbums = albums
+                        .sort(() => 0.5 - Math.random()) // Shuffle array
+                        .slice(0, 5); // Take first 5 items
+
+                    const albumList = document.getElementById("albumList");
+                    albumList.innerHTML = ''; // Clear existing content
+                    
+                    // Update the albums section
+                    randomAlbums.forEach((album) => {
+                        const sanitizedAlbum = album.replace(/[%<>:"/\\|?*]+/g, "").trim();
+                        const albumCard = document.createElement("div");
+                        albumCard.className = "album-card loading";
+                        
+                        albumCard.innerHTML = `
+                            <div class="relative overflow-hidden">
+                                <div class="loading-effect"></div>
+                                <img alt="Bìa album ${album}">
+                                <div class="album-title font-medium truncate">${album}</div>
+                            </div>
+                        `;
+
+                        const img = albumCard.querySelector("img");
+
+                        // Load album cover
+                        fetch(`${API_URL}/cover/${encodeURIComponent(sanitizedAlbum)}`)
+                            .then(res => res.json())
+                            .then(data => {
+                                img.src = data.coverUrl;
+                                img.onload = () => {
+                                    albumCard.classList.remove('loading');
+                                };
+                            });
+
+                        // Add event listeners
+                        albumCard.addEventListener("click", () => {
+                            window.location.href = `album.html?album=${encodeURIComponent(album)}`;
+                        });
+
+                        albumCard.addEventListener("mouseenter", () => {
+                            changeBackground(img.src);
+                        });
+                        
+                        albumCard.addEventListener("mouseleave", () => {
+                            const newBg = document.querySelector('.bg-overlay.active');
+                            if (newBg) {
+                                newBg.classList.remove('active');
+                                setTimeout(() => newBg.remove(), 800);
+                            }
+                            currentBg = null;
+                        });
+                        
+                        albumList.appendChild(albumCard);
+                    });
+                });
+
+            // Add username display logic
+            if (token) {
+                fetch(`${API_URL}/verify-token`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('username').textContent = data.username;
+                    document.getElementById('loginLink').style.display = 'none';
+                    document.getElementById('logoutBtn').style.display = 'block';
+                })
+                .catch(() => {
+                    // On token verification failure, show login UI
+                    document.getElementById('username').textContent = '';
+                    document.getElementById('logoutBtn').style.display = 'none';
+                    document.getElementById('loginLink').style.display = 'block';
+                });
+            } else {
+                // No token, show login UI
+                document.getElementById('username').textContent = '';
+                document.getElementById('logoutBtn').style.display = 'none';
+                document.getElementById('loginLink').style.display = 'block';
+            }
+
+            // Add logout button event listener
+            const logoutBtn = document.getElementById('logoutBtn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', handleLogout);
+            }
+
+            // Add sidebar interaction handling
+            const sidebar = document.querySelector('aside');
+            let timeoutId;
+
+            // Create interaction zone
+            const interactionZone = document.createElement('div');
+            interactionZone.style.cssText = `
+                position: fixed;
+                left: 0;
+                top: 0;
+                width: 100px;
+                height: 100%;
+                z-index: 49;
+            `;
+            document.body.appendChild(interactionZone);
+
+            interactionZone.addEventListener('mouseenter', () => {
+                sidebar.style.transform = 'translateX(0)';
+                clearTimeout(timeoutId);
+            });
+
+            sidebar.addEventListener('mouseleave', () => {
+                timeoutId = setTimeout(() => {
+                    sidebar.style.transform = 'translateX(-90%)';
+                }, 300); // Delay before hiding
+            });
+
+            // Add this to your DOMContentLoaded event listener, after the albums fetch
+            // Generate and display random playlists
+            fetch(`${API_URL}/songs`)
+                .then(res => res.json())
+                .then(allSongs => {
+                    const playlistContainer = document.getElementById('playlistContainer');
+                    
+                    // Create 3 random playlists
+                    const playlists = [
+                        { name: 'Mix Thư Giãn', icon: '🌙', color: 'from-blue-400 to-indigo-600' },
+                        { name: 'Party Mix', icon: '🎉', color: 'from-pink-500 to-rose-500' },
+                        { name: 'Tâm Trạng', icon: '💭', color: 'from-purple-400 to-violet-600' }
+                    ];
+
+                    // Shuffle songs and distribute them to playlists
+                    const shuffledSongs = [...allSongs].sort(() => 0.5 - Math.random());
+                    
+                    playlists.forEach((playlist, index) => {
+                        // Each playlist gets a random selection of songs
+                        const playlistSongs = shuffledSongs.slice(index * 10, (index + 1) * 10);
+                        
+                        // Create playlist card
+                        const playlistCard = document.createElement('div');
+                        playlistCard.className = 'glass-effect rounded-lg overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-105';
+                        
+                        playlistCard.innerHTML = `
+                            <div class="bg-gradient-to-br ${playlist.color} p-6 h-48 flex flex-col justify-between">
+                                <div class="text-4xl">${playlist.icon}</div>
+                                <div>
+                                    <h3 class="text-2xl font-bold mb-1">${playlist.name}</h3>
+                                    <p class="text-white/80">${playlistSongs.length} bài hát</p>
+                                </div>
+                            </div>
+                        `;
+
+                        // Add click event to redirect to album page
+                        playlistCard.addEventListener('click', () => {
+                            // Store playlist data in sessionStorage
+                            sessionStorage.setItem('currentPlaylist', JSON.stringify({
+                                name: playlist.name,
+                                songs: playlistSongs,
+                                icon: playlist.icon
+                            }));
+                            
+                            // Redirect to album page with playlist parameter
+                            window.location.href = `playlist.html?playlist=${encodeURIComponent(playlist.name)}`;
+                        });
+
+                        playlistContainer.appendChild(playlistCard);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading playlists:', error);
+                });
+        });
+       
+        // Thay thế hàm playSong hiện tại
+async function playSong(artist, filename) {
+    try {
+        // Show loading indicator
+        const loadingIndicator = document.createElement('div');
+        loadingIndicator.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+        loadingIndicator.innerHTML = `
+            <div class="bg-gray-800 p-4 rounded-lg flex items-center gap-3">
+                <div class="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                <span>Đang tải...</span>
+            </div>
+        `;
+        document.body.appendChild(loadingIndicator);
+
+        // First try to get song info from regular songs endpoint
+        const response = await fetch(`${API_URL}/songs?artist=${encodeURIComponent(artist)}`);
+        const songs = await response.json();
+        
+        // Find the song and its album
+        const song = songs.find(s => s.filename === filename);
+        
+        if (song && song.album) {
+            // Store song data to play after redirect
+            sessionStorage.setItem('playAfterLoad', JSON.stringify({
+                artist: artist,
+                filename: filename,
+                title: filename.replace(/\.(mp3|flac)$/, ''),
+                albumName: song.album
+            }));
+
+            // Remove loading indicator
+            loadingIndicator.remove();
+
+            // Redirect to album page
+            window.location.href = `album.html?album=${encodeURIComponent(song.album)}`;
+        } else {
+            // Try alternate endpoint if first attempt fails
+            const findResponse = await fetch(`${API_URL}/songs/find`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    artist: artist,
+                    filename: filename
+                })
+            });
+
+            if (!findResponse.ok) {
+                throw new Error(`Server error: ${findResponse.status}`);
+            }
+
+            const songData = await findResponse.json();
+
+            if (songData && songData.album) {
+                sessionStorage.setItem('playAfterLoad', JSON.stringify({
+                    artist: artist,
+                    filename: filename,
+                    title: filename.replace(/\.(mp3|flac)$/, ''),
+                    albumName: songData.album
+                }));
+
+                // Remove loading indicator
+                loadingIndicator.remove();
+
+                window.location.href = `album.html?album=${encodeURIComponent(songData.album)}`;
+            } else {
+                throw new Error('Không tìm thấy thông tin bài hát');
+            }
+        }
+
+    } catch (error) {
+        // Remove loading indicator
+        const loadingIndicator = document.querySelector('.fixed.inset-0');
+        if (loadingIndicator) {
+            loadingIndicator.remove();
+        }
+
+        // Show error toast with more specific message
+        const errorToast = document.createElement('div');
+        errorToast.className = 'fixed bottom-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+        errorToast.textContent = error.message === 'Failed to fetch' 
+            ? 'Không thể kết nối đến máy chủ'
+            : error.message || 'Có lỗi xảy ra khi tải bài hát';
+        
+        document.body.appendChild(errorToast);
+
+        // Add animation for error toast
+        errorToast.style.animation = 'slideIn 0.3s ease-out';
+        
+        // Remove error message after 3 seconds with fade out
+        setTimeout(() => {
+            errorToast.style.animation = 'slideOut 0.3s ease-in';
+            setTimeout(() => errorToast.remove(), 300);
+        }, 3000);
+
+        console.error('Error finding song:', error);
+    }
+}
+
+// Add to your existing JavaScript section
+function showLoginModal() {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    modal.innerHTML = `
+        <div class="bg-gray-800 rounded-lg p-8 max-w-md w-full mx-4 transform transition-all">
+            <h2 class="text-2xl font-bold mb-6 text-center">Đăng nhập</h2>
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Tên đăng nhập</label>
+                    <input type="text" name="username" required
+                        class="w-full px-4 py-2 rounded-lg bg-gray-700 border border-gray-600 text-white focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Mật khẩu</label>
+                    <input type="password" name="password" required
+                        class="w-full px-4 py-2 rounded-lg bg-gray-700 border border-gray-600 text-white focus:outline-none focus:border-blue-500">
+                </div>
+                <button type="submit" 
+                    class="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                    Đăng nhập
+                </button>
+                <div class="text-center mt-4">
+                    <button type="button" onclick="showRegisterModal()" class="text-blue-400 hover:text-blue-500">
+                        Chưa có tài khoản? Đăng ký ngay
+                    </button>
+                </div>
+            </form>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.remove();
+    });
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        try {
+            const response = await fetch(`${API_URL}/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username: formData.get('username'),
+                    password: formData.get('password')
+                })
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                localStorage.setItem('token', data.token);
+                document.getElementById('username').textContent = formData.get('username');
+                document.getElementById('loginLink').style.display = 'none';
+                document.getElementById('logoutBtn').style.display = 'block';
+                modal.remove();
+            } else {
+                throw new Error(data.message || 'Đăng nhập thất bại');
+            }
+        } catch (error) {
+            alert(error.message);
+        }
+    });
+}
+
+function showRegisterModal() {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    modal.innerHTML = `
+        <div class="bg-gray-800 rounded-lg p-8 max-w-md w-full mx-4">
+            <h2 class="text-2xl font-bold mb-6 text-center">Đăng ký</h2>
+            <form id="registerForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Tên đăng nhập</label>
+                    <input type="text" name="username" required minlength="3"
+                        class="w-full px-4 py-2 rounded-lg bg-gray-700 border border-gray-600 text-white focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Mật khẩu</label>
+                    <input type="password" name="password" required minlength="6"
+                        class="w-full px-4 py-2 rounded-lg bg-gray-700 border border-gray-600 text-white focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Xác nhận mật khẩu</label>
+                    <input type="password" name="confirmPassword" required
+                        class="w-full px-4 py-2 rounded-lg bg-gray-700 border border-gray-600 text-white focus:outline-none focus:border-blue-500">
+                </div>
+                <button type="submit" 
+                    class="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                    Đăng ký
+                </button>
+                <div class="text-center mt-4">
+                    <button type="button" onclick="showLoginModal()" class="text-blue-400 hover:text-blue-500">
+                        Đã có tài khoản? Đăng nhập
+                    </button>
+                </div>
+            </form>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.remove();
+    });
+
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        
+        if (formData.get('password') !== formData.get('confirmPassword')) {
+            alert('Mật khẩu không khớp');
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_URL}/register`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username: formData.get('username'),
+                    password: formData.get('password')
+                })
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                alert('Đăng ký thành công! Vui lòng đăng nhập.');
+                modal.remove();
+                showLoginModal();
+            } else {
+                throw new Error(data.message || 'Đăng ký thất bại');
+            }
+        } catch (error) {
+            alert(error.message);
+        }
+    });
+}
+
+        // Add these functions to your existing JavaScript
+        async function loadAllAlbums() {
+            try {
+                const response = await fetch(`${API_URL}/albums`);
+                const albums = await response.json();
+                const albumsList = document.getElementById("allAlbumsList");
+                albumsList.innerHTML = '';
+
+                for (const album of albums) {
+                    const sanitizedAlbum = album.replace(/[%<>:"/\\|?*]+/g, "").trim();
+                    const albumCard = document.createElement("div");
+                    albumCard.className = "album-card relative glass-effect rounded-lg shadow-lg text-center overflow-hidden cursor-pointer transform transition hover:scale-105";
+                    
+                    const img = document.createElement("img");
+                    img.className = "w-full h-48 object-cover loading";
+                    img.alt = `Bìa album ${album}`;
+                    albumCard.appendChild(img);
+
+                    const title = document.createElement("div");
+                    title.className = "album-title p-4 text-lg font-bold uppercase bg-gray-900 bg-opacity-50 absolute bottom-0 w-full";
+                    title.textContent = album;
+                    albumCard.appendChild(title);
+
+                    // Immediately load album cover
+                    try {
+                        const coverResponse = await fetch(`${API_URL}/cover/${encodeURIComponent(sanitizedAlbum)}`);
+                        const coverData = await coverResponse.json();
+                        img.src = coverData.coverUrl;
+                        img.onload = () => img.classList.remove('loading');
+                        
+                        // Add hover event to load background
+                        albumCard.addEventListener("mouseenter", () => {
+                            changeBackground(img.src);
+                        });
+                        
+                        albumCard.addEventListener("mouseleave", () => {
+                            const newBg = document.querySelector('.bg-overlay.active');
+                            if (newBg) {
+                                newBg.classList.remove('active');
+                                setTimeout(() => newBg.remove(), 800);
+                            }
+                            currentBg = null;
+                        });
+                    } catch (error) {
+                        console.error("Error loading album cover:", error);
+                    }
+
+                    // Add click event
+                    albumCard.addEventListener("click", () => {
+                        window.location.href = `album.html?album=${encodeURIComponent(album)}`;
+                    });
+
+                    albumsList.appendChild(albumCard);
+                }
+            } catch (error) {
+                console.error("Error loading albums:", error);
+            }
+        }
+
+        function showSection(sectionName) {
+            // Hide all sections
+            document.getElementById('discover-section').classList.add('hidden');
+            document.getElementById('albums-section').classList.add('hidden');
+            document.getElementById('playlists-section').classList.add('hidden');
+            document.getElementById('favorites-section').classList.add('hidden');
+
+            // Show selected section
+            if (sectionName === 'albums') {
+                document.getElementById('albums-section').classList.remove('hidden');
+                loadAllAlbums(); // Load albums when section is shown
+            } else if (sectionName === 'playlists') {
+                document.getElementById('playlists-section').classList.remove('hidden');
+                loadUserPlaylists();
+            } else if (sectionName === 'favorites') {
+                document.getElementById('favorites-section').classList.remove('hidden');
+                loadFavorites();
+            } else {
+                document.getElementById('discover-section').classList.remove('hidden');
+            }
+        }
+
+        function showCreatePlaylistModal() {
+            if (!token) {
+                alert('Vui lòng đăng nhập để tạo playlist');
+                showLoginModal();
+                return;
+            }
+
+            const modal = document.createElement('div');
+            modal.className = 'playlist-modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-gray-800 rounded-lg p-8 max-w-md w-full mx-4">
+                    <h2 class="text-2xl font-bold mb-6">Tạo Playlist Mới</h2>
+                    <form id="createPlaylistForm" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Tên Playlist</label>
+                            <input type="text" name="name" required
+                                class="w-full px-4 py-2 rounded-lg bg-gray-700 border border-gray-600 text-white focus:outline-none focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Mô tả</label>
+                            <textarea name="description" rows="3"
+                                class="w-full px-4 py-2 rounded-lg bg-gray-700 border border-gray-600 text-white focus:outline-none focus:border-blue-500"></textarea>
+                        </div>
+                        <div class="flex justify-end gap-4">
+                            <button type="button" onclick="this.closest('.playlist-modal').remove()" 
+                                class="px-4 py-2 rounded-lg text-gray-400 hover:text-white transition-colors">
+                                Hủy
+                            </button>
+                            <button type="submit" 
+                                class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                                Tạo
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) modal.remove();
+            });
+            function showToast(message, type = "info") {
+                const toast = document.createElement("div");
+                toast.className = `toast toast-${type}`;
+                toast.innerText = message;
+            }
+            document.getElementById('createPlaylistForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                
+                try {
+                    const response = await fetch(`${API_URL}/playlist`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            name: formData.get('name'),
+                            description: formData.get('description'),
+                            songs: []
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (response.ok) {
+                        modal.remove();
+                        loadUserPlaylists(); // Refresh playlists
+                        showToast('✅ Tạo playlist thành công!');
+                    } else {
+                        throw new Error(data.message);
+                    }
+                } catch (error) {
+                    showToast('❌ ' + (error.message || 'Có lỗi xảy ra'));
+                }
+            });
+        }
+
+        async function loadUserPlaylists() {
+            if (!token) return;
+
+            try {
+                const response = await fetch(`${API_URL}/playlist`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const playlists = await response.json();
+
+                const container = document.getElementById('userPlaylists');
+                container.innerHTML = '';
+
+                playlists.forEach(playlist => {
+                    const card = document.createElement('div');
+                    card.className = 'glass-effect rounded-lg overflow-hidden cursor-pointer transform transition hover:scale-105';
+                    card.innerHTML = `
+                        <div class="p-6">
+                            <h3 class="text-xl font-bold mb-2">${playlist.name}</h3>
+                            <p class="text-gray-400 text-sm mb-4">${playlist.description || 'Không có mô tả'}</p>
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-gray-400">${playlist.songs.length} bài hát</span>
+                                <button class="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 transition-colors">
+                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M8 5v14l11-7z"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+
+                    // Update click handler
+                    card.addEventListener('click', () => {
+                        // Store playlist data in sessionStorage
+                        sessionStorage.setItem('currentPlaylist', JSON.stringify({
+                            name: playlist.name,
+                            songs: playlist.songs,
+                            description: playlist.description,
+                            id: playlist._id
+                        }));
+                        
+                        // Navigate to playlist page
+                        window.location.href = `playlist.html?id=${playlist._id}`;
+                    });
+
+                    container.appendChild(card);
+                });
+            } catch (error) {
+                console.error('Error loading playlists:', error);
+                showToast('❌ Không thể tải danh sách playlist');
+            }
+        }
+
+        // Add to your DOMContentLoaded event
+        document.addEventListener("DOMContentLoaded", () => {
+            // ...existing code...
+            
+            if (token) {
+                loadUserPlaylists();
+            }
+        });
+        function loadPlaylist(playlistName) {
+    fetch(`${API_URL}/playlist?name=${encodeURIComponent(playlistName)}`)
+        .then(res => res.json())
+        .then(data => {
+            if (!data || !data.songs) {
+                alert("Playlist không có bài hát nào!");
+                return;
+            }
+            sessionStorage.setItem('currentPlaylist', JSON.stringify({
+                name: playlistName,
+                songs: data.songs,
+                icon: "🎵"
+            }));
+            window.location.href = `playlist.html?playlist=${encodeURIComponent(playlistName)}`;
+        })
+        .catch(error => console.error("Lỗi tải playlist:", error));
+        }
+
+async function loadFavorites() {
+    try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            alert('Vui lòng đăng nhập để xem bài hát yêu thích!');
+            return;
+        }
+
+        const response = await fetch(`${API_URL}/favorite`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Không thể tải danh sách yêu thích');
+        }
+
+        const favorites = await response.json();
+        const favoritesList = document.getElementById('favoritesList');
+        
+        if (!favorites || favorites.length === 0) {
+            favoritesList.innerHTML = `
+                <div class="text-center text-gray-400 py-8">
+                    Bạn chưa có bài hát yêu thích nào
+                </div>
+            `;
+            return;
+        }
+
+        favoritesList.innerHTML = favorites.map((song, index) => `
+            <div class="glass-effect p-4 rounded-lg flex items-center justify-between group hover:bg-white/10">
+                <div class="flex items-center gap-4">
+                    <span class="text-white/40">${index + 1}</span>
+                    <div>
+                        <h3 class="font-medium">${song.title}</h3>
+                        <p class="text-sm text-gray-400">${song.artist || 'Unknown Artist'}</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <button onclick="playSong('${song.artist || ''}', '${song.filename}')" 
+                            class="text-white/60 hover:text-blue-500 transition-colors">
+                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
+                    </button>
+                    <button onclick="removeFavorite('${song.title}')"
+                            class="text-red-500 hover:text-red-600 transition-colors">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+
+    } catch (error) {
+        console.error('Error loading favorites:', error);
+        showToast('❌ Không thể tải danh sách yêu thích');
+    }
+}
+
+async function removeFavorite(title) {
+    try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        const response = await fetch(`${API_URL}/favorite`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ title })
+        });
+
+        if (!response.ok) throw new Error('Failed to remove favorite');
+
+        showToast('✅ Đã xóa khỏi danh sách yêu thích');
+        loadFavorites(); // Reload favorites list
+    } catch (error) {
+        console.error('Error removing favorite:', error);
+        showToast('❌ Không thể xóa khỏi danh sách yêu thích');
+    }
+}
+
+    </script>
+</body>
+</html>

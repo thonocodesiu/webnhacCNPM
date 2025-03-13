@@ -98,7 +98,8 @@
             </div>
         </div>
     </div>
-
+    <!-- Audio Player -->
+<div id="audioPlayerContainer"></div>
     <script>
         const API_URL = "http://localhost:3000";
         let songs = [];
@@ -180,31 +181,65 @@
             document.getElementById("songCount").textContent = `${playlistData.songs.length} bài hát`;
             songs = playlistData.songs;
         }
-    
         function displaySongs() {
-            const songList = document.getElementById("songsList");
-            songList.innerHTML = "";
-            
-            songs.forEach((song, index) => {
-                const li = document.createElement("li");
-                li.className = "song-item p-4 rounded-lg flex items-center justify-between group";
-                li.innerHTML = `
-                    <div class="flex items-center gap-4">
-                        <span class="text-white/40 group-hover:text-blue-400 w-6">${index + 1}</span>
-                        <div class="flex flex-col">
-                            <span class="font-medium">${song.title}</span>
-                            <span class="text-sm text-white/60">${song.artist || "Không rõ"}</span>
-                        </div>
-                    </div>
-                    <a href="${song.url}" class="opacity-0 group-hover:opacity-100 transition-opacity">
-                        <svg class="w-8 h-8 text-white/60 hover:text-blue-400 transition-colors" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M8 5v14l11-7z"/>
-                        </svg>
-                    </a>
-                `;
-                songList.appendChild(li);
-            });
+    const songList = document.getElementById("songsList");
+    songList.innerHTML = "";
+
+    songs.forEach((song, index) => {
+        const songUrl = `${API_URL}/song-by-filename/${encodeURIComponent(song.filename)}`;
+
+        const li = document.createElement("li");
+        li.className = "song-item p-4 rounded-lg flex items-center justify-between group";
+        li.innerHTML = `
+            <div class="flex items-center gap-4">
+                <span class="text-white/40 group-hover:text-blue-400 w-6">${index + 1}</span>
+                <div class="flex flex-col">
+                    <span class="font-medium">${song.title}</span>
+                    <span class="text-sm text-white/60">${song.artist || "Không rõ"}</span>
+                </div>
+            </div>
+            <button onclick="playSongByFilename('${song.filename}', '${song.title}', '${song.artist}')" 
+                class="opacity-0 group-hover:opacity-100 transition-opacity">
+                <svg class="w-8 h-8 text-white/60 hover:text-blue-400 transition-colors" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z"/>
+                </svg>
+            </button>
+        `;
+        songList.appendChild(li);
+    });
+}
+let audioPlayer;
+async function playSongByFilename(filename) {
+    const API_URL = "http://localhost:3000";
+
+    if (!audioPlayer) {
+        audioPlayer = new AudioPlayer(API_URL);
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/song-by-filename/${encodeURIComponent(filename)}`);
+        const song = await response.json();
+
+        if (!response.ok || !song.url) {
+            throw new Error("Không tìm thấy bài hát!");
         }
+
+        // Đảm bảo URL đúng format `/play/Artist/Filename`
+        const songUrl = `${API_URL}/play/${encodeURIComponent(song.artist)}/${encodeURIComponent(song.filename)}`;
+        console.log("🎵 Đang phát nhạc:", songUrl);
+
+        audioPlayer.loadTrack(songUrl, song.title || filename, song.artist || "Unknown Artist");
+    } catch (error) {
+        console.error("❌ Lỗi khi phát nhạc:", error);
+    }
+}
+
+
+
+
+
+
+
     </script>
     
     <div>

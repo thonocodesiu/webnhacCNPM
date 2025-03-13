@@ -37,7 +37,7 @@ const albumSchema = new mongoose.Schema({
 const Album = mongoose.model("Album", albumSchema);
 
 // Thư mục chứa nhạc
-const musicFolder = "H:\\cai dat\\web nhac\\nhac\\The Weeknd";
+const musicFolder = "H:\\cai dat\\web nhac\\nhac\\Uyên Linh";
 
 const importSongs = async () => {
     const files = fs.readdirSync(musicFolder);
@@ -77,7 +77,40 @@ const importSongs = async () => {
         }
     }
 
-    // Lưu album vào MongoDB
+   // Lưu album vào MongoDB
+for (const albumName in albumData) {
+    const albumInfo = albumData[albumName];
+
+    // Kiểm tra nếu album đã tồn tại
+    let existingAlbum = await Album.findOne({ album: albumName, artist: albumInfo.artist });
+
+    if (!existingAlbum) {
+        const newAlbum = new Album({
+            album: albumName,
+            artist: albumInfo.artist,
+            song_count: albumInfo.songs.length,
+            cover: `/static/albums/${albumName}.jpg`, // Ảnh bìa mặc định
+            songs: albumInfo.songs.map(song => ({
+                title: song.title,
+                filename: song.filename
+            }))
+        });
+
+        await newAlbum.save();
+        console.log(`✅ Đã thêm album: ${albumName} - ${albumInfo.artist} (${albumInfo.songs.length} bài hát)`);
+    } else {
+        // Cập nhật danh sách bài hát nếu album đã tồn tại
+        existingAlbum.song_count = albumInfo.songs.length;
+        existingAlbum.songs = albumInfo.songs.map(song => ({
+            title: song.title,
+            filename: song.filename
+        }));
+
+        await existingAlbum.save();
+        console.log(`🔄 Cập nhật album: ${albumName} - ${albumInfo.artist} (${albumInfo.songs.length} bài hát)`);
+    }
+}
+
     
 
     console.log("🎵 Hoàn thành nhập danh sách bài hát và album!");

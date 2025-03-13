@@ -428,6 +428,27 @@
                 document.getElementById('loginLink').style.display = 'block';
             });
         }
+        function changeBackground(url) {
+            if (currentBg === url) return;
+            currentBg = url;
+            
+            const newBg = document.createElement('div');
+            newBg.className = 'bg-overlay';
+            newBg.style.backgroundImage = `url('${url}')`;
+            document.body.appendChild(newBg);
+            
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    newBg.classList.add('active');
+                });
+            });
+            
+            const oldBg = document.querySelector('.bg-overlay.active');
+            if (oldBg && oldBg !== newBg) {
+                oldBg.style.opacity = '0';
+                setTimeout(() => oldBg.remove(), 1200);
+            }
+        }       
 
         document.addEventListener("DOMContentLoaded", () => {
             // Initialize player after DOM loads
