@@ -280,15 +280,19 @@ class AudioPlayer {
         }
     }
 
-    async loadTrack(url, title, artist) {
+    async loadTrack(url, title, artist, index = null) {
         try {
+            if (index !== null) {
+                this.currentIndex = index; // ✅ Cập nhật currentIndex khi có index truyền vào
+            }
+    
             if (this.sound) {
                 this.sound.unload();
             }
-
+    
             const fileType = this.getFileType(url);
             const format = this.getAudioFormat(fileType);
-
+    
             this.sound = new Howl({
                 src: [url],
                 format: [format],
@@ -301,7 +305,7 @@ class AudioPlayer {
                     }
                 },
                 onload: () => {
-                    console.log(`Loaded ${format} track:`, title);
+                    console.log(`✅ Đã tải bài hát: ${title}`);
                     this.updateNowPlaying(title, artist);
                 },
                 onplay: () => {
@@ -316,25 +320,26 @@ class AudioPlayer {
                 onend: () => {
                     if (this.isRepeatOn) {
                         console.log("🔁 Lặp lại bài hát...");
-                        this.playSong(this.currentIndex);
+                        this.sound.play(); // ✅ Không gọi `playSong(this.currentIndex)`, chỉ phát lại
                     } else {
                         console.log("🎶 Bài hát kết thúc, phát bài tiếp theo...");
                         this.nextTrack();
                     }
                 }
             });
-
+    
             this.sound.play();
             this.updateVolume(this.volume * 100);
             this.currentSongData = { title, artist, filename: url.split('/').pop() };
             await this.checkLikeStatus(title);
-
+    
             return true;
         } catch (error) {
-            console.error('Track load error:', error);
+            console.error('❌ Lỗi tải bài hát:', error);
             return false;
         }
     }
+    
 
     toggleRepeat() {
         this.isRepeatOn = !this.isRepeatOn;
@@ -873,24 +878,31 @@ async resume() {
                 return;
             }
     
-            // 🟢 Kiểm tra bài hát đang phát để thêm vào playlist mới
-            if (!this.currentSongData || !this.currentSongData.title) {
-                alert("⚠️ Không có bài hát nào đang phát để thêm vào playlist mới!");
-                return;
+            // 🟢 Không yêu cầu bài hát, playlist có thể trống
+            const requestData = {
+                name: name,
+                description: "Playlist mới",
+                songs: []
+            };
+    
+            // Nếu đang phát bài hát, thêm vào playlist mới
+            if (this.currentSongData && this.currentSongData.title) {
+                requestData.songs.push({
+                    title: this.currentSongData.title,
+                    artist: this.currentSongData.artist || "Unknown Artist",
+                    filename: this.currentSongData.filename || "Unknown Filename"
+                });
             }
     
-            // 🟢 Gửi yêu cầu tạo playlist mới
+            console.log("📤 Dữ liệu gửi lên API (Tạo playlist):", requestData);
+    
             const response = await fetch(`${this.apiUrl}/playlist`, {
                 method: 'POST',
                 headers: {
                     "Authorization": `Bearer ${token}`,
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify({ 
-                    name: name,
-                    description: "Playlist mới",
-                    songs: [this.currentSongData.title] // Thêm bài hát hiện tại vào luôn
-                })
+                body: JSON.stringify(requestData)
             });
     
             if (!response.ok) {
@@ -907,6 +919,7 @@ async resume() {
         }
     }
     
+    
 
 
 
@@ -918,10 +931,19 @@ async resume() {
                 return;
             }
     
-            if (!this.currentSongData || !this.currentSongData.title) {
-                alert("⚠️ Không có bài hát nào đang phát!");
+            if (!this.currentSongData || !this.currentSongData.title || !this.currentSongData.filename) {
+                alert("⚠️ Không có bài hát hợp lệ để thêm vào playlist!");
+                console.error("🚨 currentSongData bị thiếu dữ liệu:", this.currentSongData);
                 return;
             }
+    
+            const requestData = {
+                songTitle: this.currentSongData.title,
+                artist: this.currentSongData.artist || "Unknown Artist",
+                filename: decodeURIComponent(this.currentSongData.filename)
+            };
+    
+            console.log("📤 Dữ liệu gửi lên API:", requestData); // Kiểm tra dữ liệu gửi đi
     
             const response = await fetch(`${this.apiUrl}/playlist/${playlistId}`, {
                 method: 'PUT',
@@ -929,17 +951,13 @@ async resume() {
                     "Authorization": `Bearer ${token}`,
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify({ songTitle: this.currentSongData.title })
+                body: JSON.stringify(requestData)
             });
     
             const data = await response.json();
+            console.log("📥 Phản hồi từ server:", data); // Kiểm tra phản hồi từ API
     
-            this.hidePlaylistModal();
-    
-            // Hiện thông báo dựa vào response
-            if (data.duplicate) {
-                this.showNotification("⚠️ Bài hát đã có trong playlist!", "warning");
-            } else if (!response.ok) {
+            if (!response.ok) {
                 throw new Error(data.message || "Không thể thêm bài hát");
             } else {
                 this.showNotification("✅ Đã thêm vào playlist!", "success");
@@ -950,6 +968,7 @@ async resume() {
             this.showNotification(`❌ Lỗi: ${error.message}`, "error");
         }
     }
+    
     
     showNotification(message, type = "success") {
         const notificationSystem = document.getElementById('notificationSystem');
@@ -1111,4 +1130,16 @@ handleError(message, type = "error") {
         }, 3000);
     }
 }
+setarray(songs) {
+    if (!Array.isArray(songs) || songs.length === 0) {
+        console.warn("⚠️ Không thể gán playlist, danh sách bài hát rỗng!");
+        return;
+    }
+
+    this.playlist = [...songs]; // ✅ Lưu danh sách bài hát vào this.playlist
+    this.currentIndex = 0; // ✅ Đặt bài hát đầu tiên làm mặc định
+
+    console.log("✅ Playlist đã được gán:", this.playlist);
+}
+
 }

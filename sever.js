@@ -202,10 +202,13 @@ const playlistSchema = new mongoose.Schema({
     username: { type: String, required: true },
     name: { type: String, required: true },
     description: String,
-    songs: [String] // Chỉ cần lưu danh sách tên bài hát
+    songs: [
+        {
+            title: { type: String, required: true },
+            filename: { type: String, required: true }
+        }
+    ]
 });
-
-
 const Playlist = mongoose.model("Playlist", playlistSchema);
 
 app.post("/playlist", authenticateToken, async (req, res) => {
@@ -216,11 +219,20 @@ app.post("/playlist", authenticateToken, async (req, res) => {
         return res.status(400).json({ message: "❌ Tên playlist là bắt buộc." });
     }
 
-    const playlist = new Playlist({ username, name, description, songs });
-    await playlist.save();  
+    const formattedSongs = Array.isArray(songs) && songs.length > 0
+        ? songs.map(song => ({
+            title: song.title || "Unknown Title",
+            filename: song.filename || "Unknown Filename"
+        }))
+        : [];
+
+    const playlist = new Playlist({ username, name, description, songs: formattedSongs });
+    await playlist.save();
 
     res.status(201).json({ message: "✅ Playlist đã được tạo!", playlist });
 });
+
+
 
 
 app.get("/playlist", authenticateToken, async (req, res) => {
@@ -272,22 +284,22 @@ app.post("/favorite", authenticateToken, async (req, res) => {
 
     res.status(201).json({ message: "✅ Đã thêm vào danh sách yêu thích!" });
 });
-   let isPlaying = false;
-   // Play endpoint
-   app.post('/api/play', (req, res) => {
-       isPlaying = true;
-       res.send({ message: 'Playback started', playing: isPlaying });
-   });
-   // Pause endpoint
-   app.post('/api/pause', (req, res) => {
-       isPlaying = false;
-       res.send({ message: 'Playback paused', playing: isPlaying });
-   });
-   // Status endpoint (optional)
-   app.get('/api/status', (req, res) => {
-       res.send({ playing: isPlaying });
-   });
-   app.delete("/unfavorite", authenticateToken, async (req, res) => {
+let isPlaying = false;
+// Play endpoint
+app.post('/api/play', (req, res) => {
+    isPlaying = true;
+    res.send({ message: 'Playback started', playing: isPlaying });
+});
+// Pause endpoint
+app.post('/api/pause', (req, res) => {
+    isPlaying = false;
+    res.send({ message: 'Playback paused', playing: isPlaying });
+});
+// Status endpoint (optional)
+app.get('/api/status', (req, res) => {
+    res.send({ playing: isPlaying });
+});
+app.delete("/unfavorite", authenticateToken, async (req, res) => {
     const { title } = req.body;
     await Favorite.deleteOne({ username: req.user.username, title });
     res.json({ message: "✅ Đã xóa khỏi yêu thích" });
@@ -304,7 +316,7 @@ app.get("/favorite", authenticateToken, async (req, res) => {
 app.get('/api/favorites/:username', async (req, res) => {
     try {
         const username = req.params.username;
-        
+
         const favorites = await Favorite.find({ username })
             .select('title createdAt')
             .sort({ createdAt: -1 });
@@ -334,7 +346,7 @@ app.get('/api/favorites/:username', async (req, res) => {
 app.get('/api/playlists/:username', async (req, res) => {
     try {
         const username = req.params.username;
-        
+
         const playlists = await Playlist.find({ username })
             .select('name songs createdAt')
             .sort({ createdAt: -1 });
@@ -402,7 +414,7 @@ async function loadUserPlaylist(playlistId) {
         }
 
         const playlistData = await response.json();
-        
+
         document.getElementById("playlistTitle").textContent = playlistData.name;
         document.getElementById("songCount").textContent = `${playlistData.songs.length} bài hát`;
         songs = playlistData.songs;
@@ -410,31 +422,48 @@ async function loadUserPlaylist(playlistId) {
         console.error("Lỗi khi tải playlist:", error);
     }
 }
+
 app.put("/playlist/:id", authenticateToken, async (req, res) => {
     try {
-        const { songTitle, artist } = req.body;
-        const playlist = await Playlist.findById(req.params.id);
+        console.log("📥 Dữ liệu nhận từ client:", req.body);
 
+        let { songTitle, artist, filename } = req.body;
+        
+        if (!songTitle || !filename) {
+            return res.status(400).json({ message: "⚠️ Thiếu songTitle hoặc filename!" });
+        }
+
+        filename = decodeURIComponent(filename).trim(); // Giải mã URL filename
+
+        const playlist = await Playlist.findById(req.params.id);
         if (!playlist) {
             return res.status(404).json({ message: "Playlist không tồn tại" });
         }
 
-        // Kiểm tra xem bài hát đã có trong playlist chưa (dựa trên cả title + artist)
-        const songExists = playlist.songs.some(song => song.title === songTitle && song.artist === artist);
+        const songExists = playlist.songs.some(song => 
+            song.title === songTitle && song.filename === filename
+        );
+
         if (songExists) {
             return res.status(400).json({ message: "Bài hát đã có trong playlist!" });
         }
 
-        // Thêm bài hát mới vào playlist
-        playlist.songs.push({ title: songTitle, artist: artist });
+        playlist.songs.push({ 
+            title: songTitle, 
+            artist: artist || "Unknown Artist", 
+            filename
+        });
+
         await playlist.save();
+        console.log("✅ Đã thêm bài hát:", { songTitle, artist, filename });
 
         res.json({ message: "✅ Đã thêm bài hát vào playlist!", playlist });
     } catch (error) {
-        console.error("Lỗi khi thêm bài hát:", error);
-        res.status(500).json({ message: "Lỗi server" });
+        console.error("❌ Lỗi khi thêm bài hát:", error);
+        res.status(500).json({ message: "Lỗi server", error: error.message });
     }
 });
+
 
 // load bài hát theo id playlists
 app.get("/playlist/:id", authenticateToken, async (req, res) => {
@@ -450,10 +479,10 @@ app.get("/playlist/:id", authenticateToken, async (req, res) => {
         // Trả về danh sách bài hát đúng định dạng
         const songList = playlist.songs.map(title => ({
             title: title, // Giữ nguyên tên bài hát
-            artist: "Chưa có dữ liệu", // Nếu có bảng `Song`, có thể truy vấn thêm
+            artist: "Chưa có dữ liệu",
             album: "Chưa có dữ liệu",
             duration: "Chưa có dữ liệu",
-            url: `#` // Nếu có file, cập nhật đường dẫn đúng
+            url: `#`
         }));
 
         res.json({
@@ -471,9 +500,9 @@ app.get("/playlist/:id", authenticateToken, async (req, res) => {
 
 // Thêm vào server.js
 app.get("/verify-token", authenticateToken, (req, res) => {
-    res.json({ 
+    res.json({
         username: req.user.username,
-        role: req.user.role 
+        role: req.user.role
     });
 });
 
@@ -503,7 +532,7 @@ app.get("/albums/:album/songs", async (req, res) => {
 app.post('/songs/find', async (req, res) => {
     try {
         const { artist, filename } = req.body;
-        
+
         // Query your database to find which album contains this song
         const song = await db.songs.findOne({
             where: {
@@ -558,23 +587,23 @@ app.get("/song-by-filename/:filename", async (req, res) => {
         res.status(500).json({ error: "Lỗi server khi tìm bài hát!" });
     }
 });
-   app.use(express.json());
-   // Play endpoint
-   app.post('/api/play', (req, res) => {
-       isPlaying = true;
-       res.send({ message: 'Playback started', playing: isPlaying });
-   });
-   // Pause endpoint
-   app.post('/api/pause', (req, res) => {
+app.use(express.json());
+// Play endpoint
+app.post('/api/play', (req, res) => {
+    isPlaying = true;
+    res.send({ message: 'Playback started', playing: isPlaying });
+});
+// Pause endpoint
+app.post('/api/pause', (req, res) => {
     isPlaying = false;
     console.log("⏸ API: Nhạc đã dừng!");
     res.send({ message: 'Playback paused', playing: isPlaying });
 });
 
-   // Status endpoint (optional)
-   app.get('/api/status', (req, res) => {
-       res.send({ playing: isPlaying });
-   });
+// Status endpoint (optional)
+app.get('/api/status', (req, res) => {
+    res.send({ playing: isPlaying });
+});
 app.use("/covers", express.static(COVERS_PATH));
 
 app.listen(PORT, () => console.log(`✅ Server chạy tại http://localhost:${PORT}`));

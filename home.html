@@ -263,6 +263,39 @@
             opacity: 1;
         }
         
+        /* Add new styles for search results */
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: rgba(23, 23, 23, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.75rem;
+            margin-top: 0.5rem;
+            max-height: 400px;
+            overflow-y: auto;
+            display: none;
+            z-index: 100;
+        }
+
+        .search-results.active {
+            display: block;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        /* Add styles for Artists section */
+        .artist-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .artist-card:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-4px);
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-white min-h-screen">
@@ -318,6 +351,13 @@
                         <path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"></path>
                     </svg>
                     Playlist
+                </a>
+                <a href="#" class="flex items-center gap-3 text-gray-300 hover:text-white transition-colors" 
+                   onclick="showSection('artists'); return false;">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                    </svg>
+                    Nghệ sĩ
                 </a>
             </nav>
         </div>
@@ -393,6 +433,14 @@
             <h2 class="text-3xl font-bold mb-6">Favorites 🍙</h2>
             <div id="favoritesList" class="grid grid-cols-1 gap-4">
                 <!-- Favorites will be loaded here -->
+            </div>
+        </section>
+
+        <!-- Add new Artists Section -->
+        <section id="artists-section" class="hidden mb-12">
+            <h2 class="text-3xl font-bold mb-6">Nghệ sĩ 🎤</h2>
+            <div id="artistsList" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <!-- Artists will be loaded here -->
             </div>
         </section>
     </main>
@@ -981,6 +1029,7 @@ function showRegisterModal() {
             document.getElementById('albums-section').classList.add('hidden');
             document.getElementById('playlists-section').classList.add('hidden');
             document.getElementById('favorites-section').classList.add('hidden');
+            document.getElementById('artists-section')?.classList.add('hidden');
 
             // Show selected section
             if (sectionName === 'albums') {
@@ -992,6 +1041,9 @@ function showRegisterModal() {
             } else if (sectionName === 'favorites') {
                 document.getElementById('favorites-section').classList.remove('hidden');
                 loadFavorites();
+            } else if (sectionName === 'artists') {
+                document.getElementById('artists-section').classList.remove('hidden');
+                loadArtists();
             } else {
                 document.getElementById('discover-section').classList.remove('hidden');
             }

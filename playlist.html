@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Playlist - THONO MUSIC</title>
+    <title>Danh Sách Phát - THONO MUSIC</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
     <script src="audio_player.js" defer></script>
     <style>
-        /* Background & Blur Effect */
         .playlist-backdrop {
             position: fixed;
             top: 0;
@@ -17,94 +16,105 @@
             height: 100vh;
             background-size: cover;
             background-position: center;
-            filter: blur(30px);
-            opacity: 0.3;
-            transition: background-image 0.5s ease;
+            filter: blur(50px);
+            opacity: 0.2;
+            transition: background-image 0.7s ease;
             z-index: -2;
         }
 
         .glass-card {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 1.5rem;
         }
 
-        /* Song Item Effects */
         .song-item {
             transition: all 0.3s ease;
+            border-radius: 0.75rem;
         }
         .song-item:hover {
-            transform: translateX(10px);
-            background: rgba(255, 255, 255, 0.1);
+            transform: scale(1.02);
+            background: rgba(255, 255, 255, 0.08);
         }
         .playing {
-            background: rgba(59, 130, 246, 0.2);
-            border-left: 4px solid #3b82f6;
+            background: rgba(99, 102, 241, 0.15);
+            border-left: 4px solid #6366f1;
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(30px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .animate-fade-in {
-            animation: fadeIn 0.5s ease forwards;
+        .animate-slide-in {
+            animation: slideIn 0.6s ease forwards;
         }
     </style>
 </head>
-<body class="bg-gray-900 text-white min-h-screen">
-    <!-- Background Effects -->
+<body class="bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white min-h-screen">
     <div class="playlist-backdrop"></div>
     
-    <div class="container mx-auto p-6">
-        <nav class="mb-8 animate-fade-in" style="animation-delay: 0.1s;">
-            <a href="home.html" class="text-white/70 hover:text-white flex items-center gap-2 transition-colors">
+    <div class="flex min-h-screen">
+        <!-- Sidebar -->
+        <div class="w-80 p-6 glass-card m-4 rounded-2xl animate-slide-in" style="animation-delay: 0.1s;">
+            <a href="home.html" class="text-white/70 hover:text-white flex items-center gap-2 mb-8 transition-colors">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                 </svg>
-                Back to Home
+                Quay lại
             </a>
-        </nav>
 
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            <!-- Playlist Info Section -->
-            <div class="lg:col-span-1 animate-fade-in" style="animation-delay: 0.2s;">
-                <div class="sticky top-6 text-center lg:text-left">
-                    <img id="playlistCover" alt="Playlist Cover" 
-                         class="w-64 h-64 mx-auto lg:mx-0 rounded-xl shadow-2xl transform transition hover:scale-105">
-                    <h1 id="playlistTitle" class="text-4xl font-bold mt-6 mb-2"></h1>
-                    <p id="songCount" class="text-gray-400 mb-4"></p>
-                    <div class="flex justify-center lg:justify-start gap-4">
-                        <button onclick="playSong(0)" class="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-full flex items-center gap-2 transition-colors">
-                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M8 5v14l11-7z"/>
-                            </svg>
-                            Play
-                        </button>
-                        <button class="bg-white/10 hover:bg-white/20 text-white px-8 py-3 rounded-full transition-colors">
-                            Shuffle
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Songs List Section -->
-            <div class="lg:col-span-3 animate-fade-in" style="animation-delay: 0.3s;">
-                <div class="glass-card p-6">
-                    <ul id="songsList" class="space-y-2">
-                        <!-- Songs will be loaded here -->
-                    </ul>
+            <div class="text-center space-y-6">
+                <img id="playlistCover" alt="Ảnh playlist" 
+                     class="w-56 h-56 mx-auto rounded-2xl shadow-2xl transform transition hover:scale-105">
+                <h1 id="playlistTitle" class="text-3xl font-bold"></h1>
+                <p id="songCount" class="text-gray-400"></p>
+                
+                <div class="space-y-3">
+                    <button onclick="playSong(0)" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl flex items-center justify-center gap-2 transition-colors">
+                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
+                        Phát tất cả
+                    </button>
+                    <button class="w-full bg-white/5 hover:bg-white/10 text-white px-8 py-3 rounded-xl transition-colors">
+                        Phát ngẫu nhiên
+                    </button>
                 </div>
             </div>
         </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 p-6">
+            <div class="glass-card p-6 animate-slide-in" style="animation-delay: 0.2s;">
+                <h2 class="text-2xl font-bold mb-6">Danh sách bài hát</h2>
+                <ul id="songsList" class="space-y-2">
+                    <!-- Songs will be loaded here -->
+                </ul>
+            </div>
+        </div>
     </div>
+
     <!-- Audio Player -->
-<div id="audioPlayerContainer"></div>
+    <div id="audioPlayerContainer"></div>
+
     <script>
         const API_URL = "http://localhost:3000";
         let songs = [];
-    
+        let audioPlayer;
+        let currentIndex = 0;
+
         document.addEventListener("DOMContentLoaded", async () => {
+            // Initialize audioPlayer when the page loads
+            audioPlayer = new AudioPlayer(API_URL);
+            // audioPlayer.onEnd(() => handleNextTrack());
+            
+            // Add keyboard controls
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'ArrowRight') handleNextTrack();
+                if (e.code === 'ArrowLeft') handlePrevTrack();
+            });
+            
             const urlParams = new URLSearchParams(window.location.search);
             const playlistId = urlParams.get("id");
             
@@ -117,113 +127,134 @@
             displaySongs();
         });
     
+
         async function loadUserPlaylist(playlistId) {
-            try {
-                const token = localStorage.getItem("token");
-                if (!token) {
-                    alert("⚠️ Bạn chưa đăng nhập! Vui lòng đăng nhập để xem playlist.");
-                    window.location.href = "login.html";
-                    return;
-                }
-    
-                const response = await fetch(`${API_URL}/playlist/${playlistId}`, {
-                    headers: { "Authorization": `Bearer ${token}` }
-                });
-    
-                if (!response.ok) {
-                    throw new Error("Không thể tải playlist!");
-                }
-    
-                const playlistData = await response.json();
-                
-                document.getElementById("playlistTitle").textContent = playlistData.name;
-                document.getElementById("songCount").textContent = `${playlistData.songs.length} bài hát`;
-                songs = playlistData.songs;
-            } catch (error) {
-                console.error("Lỗi khi tải playlist:", error);
-            }
-        }
-    
-        async function fetchSongDetails() {
     try {
-        if (songs.length === 0) return;
-
-        // Chuyển danh sách bài hát thành query string
-        const songTitles = songs.map(song => encodeURIComponent(song.title)).join(",");
-        const response = await fetch(`${API_URL}/songs?titles=${songTitles}`);
-
-        if (!response.ok) {
-            throw new Error("Không thể lấy thông tin bài hát!");
+        const token = localStorage.getItem("token");
+        if (!token) {
+            alert("⚠️ Bạn chưa đăng nhập!");
+            window.location.href = "login.html";
+            return;
         }
 
-        const songData = await response.json();
-
-        // Cập nhật danh sách bài hát với thông tin nghệ sĩ
-        songs = songs.map(song => {
-            const matchedSong = songData.find(s => s.title === song.title);
-            return matchedSong ? { ...song, artist: matchedSong.artist } : song;
+        const response = await fetch(`${API_URL}/playlist/${playlistId}`, {
+            headers: { "Authorization": `Bearer ${token}` }
         });
 
+        if (!response.ok) {
+            throw new Error("Không thể tải playlist!");
+        }
+
+        const playlistData = await response.json();
+        console.log("📥 Dữ liệu nhận từ API:", playlistData); // ✅ Kiểm tra API có trả về danh sách nhạc không
+
+        if (!playlistData.songs || playlistData.songs.length === 0) {
+            console.warn("⚠️ API không trả về bài hát nào!");
+            return;
+        }
+
+        songs = [...playlistData.songs]; // ✅ Lưu danh sách bài hát vào mảng
+
+        if (audioPlayer && typeof audioPlayer.setPlaylist === "function") {
+            audioPlayer.setPlaylist(songs);
+            console.log("✅ Danh sách bài hát đã được gán vào audioPlayer:", songs);
+        } else {
+            console.error("❌ Lỗi: AudioPlayer chưa khởi tạo hoặc setPlaylist không tồn tại!");
+        }
+
     } catch (error) {
-        console.error("Lỗi khi lấy thông tin bài hát:", error);
+        console.error("❌ Lỗi khi tải playlist:", error);
     }
 }
 
+
+
+
     
-        function loadRandomPlaylist() {
-            const playlistData = JSON.parse(sessionStorage.getItem("currentPlaylist"));
-            if (!playlistData) {
-                alert("Không tìm thấy playlist!");
-                return;
+        async function fetchSongDetails() {
+            try {
+                if (songs.length === 0) return;
+
+                // Chuyển danh sách bài hát thành query string
+                const songTitles = songs.map(song => encodeURIComponent(song.title)).join(",");
+                const response = await fetch(`${API_URL}/songs?titles=${songTitles}`);
+
+                if (!response.ok) {
+                    throw new Error("Không thể lấy thông tin bài hát!");
+                }
+
+                const songData = await response.json();
+
+                // Cập nhật danh sách bài hát với thông tin nghệ sĩ
+                songs = songs.map(song => {
+                    const matchedSong = songData.find(s => s.title === song.title);
+                    return matchedSong ? { ...song, artist: matchedSong.artist } : song;
+                });
+
+            } catch (error) {
+                console.error("Lỗi khi lấy thông tin bài hát:", error);
             }
-            
-            document.getElementById("playlistTitle").textContent = playlistData.name;
-            document.getElementById("songCount").textContent = `${playlistData.songs.length} bài hát`;
-            songs = playlistData.songs;
         }
-        function displaySongs() {
-    const songList = document.getElementById("songsList");
-    songList.innerHTML = "";
 
-    songs.forEach((song, index) => {
-        const songUrl = `${API_URL}/song-by-filename/${encodeURIComponent(song.filename)}`;
+        function loadRandomPlaylist() {
+    const playlistData = JSON.parse(sessionStorage.getItem("currentPlaylist"));
+    
+    if (!playlistData || !playlistData.songs || playlistData.songs.length === 0) {
+        alert("Không tìm thấy playlist hoặc playlist rỗng!");
+        return;
+    }
 
-        const li = document.createElement("li");
-        li.className = "song-item p-4 rounded-lg flex items-center justify-between group";
-        li.innerHTML = `
-            <div class="flex items-center gap-4">
-                <span class="text-white/40 group-hover:text-blue-400 w-6">${index + 1}</span>
-                <div class="flex flex-col">
-                    <span class="font-medium">${song.title}</span>
-                    <span class="text-sm text-white/60">${song.artist || "Không rõ"}</span>
-                </div>
-            </div>
-            <button onclick="playSongByFilename('${song.filename}', '${song.title}', '${song.artist}')" 
-                class="opacity-0 group-hover:opacity-100 transition-opacity">
-                <svg class="w-8 h-8 text-white/60 hover:text-blue-400 transition-colors" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z"/>
-                </svg>
-            </button>
-        `;
-        songList.appendChild(li);
-    });
+    document.getElementById("playlistTitle").textContent = playlistData.name;
+    document.getElementById("songCount").textContent = `${playlistData.songs.length} bài hát`;
+
+    songs = [...playlistData.songs]; // ✅ Sao chép dữ liệu vào mảng mới
+    console.log("🔄 Playlist từ sessionStorage:", songs);
+
+    if (audioPlayer && typeof audioPlayer.setPlaylist === "function") {
+        audioPlayer.setarray(songs); // ✅ Gọi setPlaylist()
+        console.log("✅ Đã gọi setarray() từ loadRandomPlaylist()");
+    } else {
+        console.error("❌ Lỗi: AudioPlayer chưa khởi tạo hoặc setPlaylist không tồn tại!");
+    }
 }
 
-        // Add playSong function to handle play button click
-        async function playSong(startIndex = 0) {
-            if (songs.length === 0) return;
-            await playSongByFilename(songs[startIndex].filename);
+
+        function displaySongs() {
+            const songList = document.getElementById("songsList");
+            songList.innerHTML = "";
+
+            songs.forEach((song, index) => {
+                const li = document.createElement("li");
+                li.className = "song-item p-4 flex items-center justify-between group hover:bg-white/5 transition-all";
+                li.innerHTML = `
+                    <div class="flex items-center gap-4">
+                        <span class="text-white/40 group-hover:text-indigo-400 w-6 text-sm">${index + 1}</span>
+                        <div class="flex flex-col">
+                            <span class="font-medium">${song.title}</span>
+                            <span class="text-sm text-white/60">${song.artist || "Không xác định"}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <span class="text-sm text-white/40">03:45</span>
+                        <button onclick="playSongByFilename('${song.filename}', ${index})" 
+                            class="opacity-0 group-hover:opacity-100 transition-opacity">
+                            <svg class="w-8 h-8 text-white/60 hover:text-indigo-400 transition-colors" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z"/>
+                            </svg>
+                        </button>
+                    </div>
+                `;
+                songList.appendChild(li);
+            });
         }
 
-        let audioPlayer;
-        async function playSongByFilename(filename) {
-            const API_URL = "http://localhost:3000";
-
-            if (!audioPlayer) {
-                audioPlayer = new AudioPlayer(API_URL);
-            }
-
+        async function playSongByFilename(filename, index) {
             try {
+                currentIndex = index || 0;
+                if (!audioPlayer) {
+                    audioPlayer = new AudioPlayer(API_URL);
+                }
+
                 const response = await fetch(`${API_URL}/song-by-filename/${encodeURIComponent(filename)}`);
                 const song = await response.json();
 
@@ -231,15 +262,38 @@
                     throw new Error("Không tìm thấy bài hát!");
                 }
 
-                // Đảm bảo URL đúng format `/play/Artist/Filename`
                 const songUrl = `${API_URL}/play/${encodeURIComponent(song.artist)}/${encodeURIComponent(song.filename)}`;
-                console.log("🎵 Đang phát nhạc:", songUrl);
-
-                audioPlayer.loadTrack(songUrl, song.title || filename, song.artist || "Unknown Artist");
+                await audioPlayer.loadTrack(songUrl, song.title || filename, song.artist || "Chưa xác định");
+                
+                // Add next/prev handlers
+                audioPlayer.nextTrack();
+                audioPlayer.prevTrack();
+                
+                // Update playing state in UI
+                document.querySelectorAll('.song-item').forEach(item => item.classList.remove('playing'));
+                const currentSong = document.querySelector(`[onclick*="${filename}"]`).closest('.song-item');
+                currentSong.classList.add('playing');
             } catch (error) {
                 console.error("❌ Lỗi khi phát nhạc:", error);
+                alert("Không thể phát bài hát này. Vui lòng thử lại sau!");
             }
         }
+        function handleNextTrack() {
+    if (audioPlayer && typeof audioPlayer.nextTrack === "function") {
+        audioPlayer.nextTrack();
+    } else {
+        console.error("❌ Lỗi: nextTrack() không tồn tại trên audioPlayer!");
+    }
+}
+
+function handlePrevTrack() {
+    if (audioPlayer && typeof audioPlayer.prevTrack === "function") {
+        audioPlayer.prevTrack();
+    } else {
+        console.error("❌ Lỗi: prevTrack() không tồn tại trên audioPlayer!");
+    }
+}
+
     </script>
 </body>
 </html>
