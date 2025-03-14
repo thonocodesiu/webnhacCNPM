@@ -32,7 +32,6 @@ class AudioPlayer {
                 throw new Error("❌ Index bài hát không hợp lệ!");
             }
     
-            // Nếu bài hát đang phát lại chính nó -> Chỉ resume thay vì load lại
             if (this.currentIndex === index && this.sound) {
                 console.log("🔄 Bài hát này đã được phát, resume thay vì load lại!");
                 this.resume();
@@ -167,7 +166,9 @@ class AudioPlayer {
                     </svg>
                     <span class="font-medium notification-message">Đã thêm vào playlist!</span>
                 </div>
-            </div>`;
+            </div>`
+               ;
+
         
         const container = document.createElement("div");
         container.innerHTML = playerHTML;
@@ -288,7 +289,6 @@ class AudioPlayer {
             const fileType = this.getFileType(url);
             const format = this.getAudioFormat(fileType);
 
-            // Configure Howler for the specific format
             this.sound = new Howl({
                 src: [url],
                 format: [format],
@@ -304,14 +304,6 @@ class AudioPlayer {
                     console.log(`Loaded ${format} track:`, title);
                     this.updateNowPlaying(title, artist);
                 },
-                onloaderror: (id, err) => {
-                    console.error(`${format} load error:`, err);
-                    this.handleError(`Không thể tải bài hát: ${title}`);
-                },
-                onplayerror: (id, err) => {
-                    console.error(`${format} play error:`, err);
-                    this.handleError(`Không thể phát bài hát: ${title}`);
-                },
                 onplay: () => {
                     this.isPlaying = true;
                     this.updatePlayPauseUI();
@@ -322,28 +314,55 @@ class AudioPlayer {
                     this.updatePlayPauseUI();
                 },
                 onend: () => {
-                    this.playNext();
+                    if (this.isRepeatOn) {
+                        console.log("🔁 Lặp lại bài hát...");
+                        this.playSong(this.currentIndex);
+                    } else {
+                        console.log("🎶 Bài hát kết thúc, phát bài tiếp theo...");
+                        this.nextTrack();
+                    }
                 }
             });
 
-            // Start playback
             this.sound.play();
             this.updateVolume(this.volume * 100);
-
-            // Store current song data
             this.currentSongData = { title, artist, filename: url.split('/').pop() };
-            
-            // Check like status when loading new track
             await this.checkLikeStatus(title);
 
             return true;
         } catch (error) {
             console.error('Track load error:', error);
-            this.handleError(error.message);
             return false;
         }
     }
 
+    toggleRepeat() {
+        this.isRepeatOn = !this.isRepeatOn;
+        this.elements.repeatBtn.classList.toggle("text-green-500", this.isRepeatOn);
+        console.log("🔁 Chế độ lặp lại:", this.isRepeatOn ? "Bật" : "Tắt");
+    }
+    toggleShuffle() {
+        this.isShuffleOn = !this.isShuffleOn;
+        this.elements.shuffleBtn.classList.toggle("text-green-500", this.isShuffleOn);
+        console.log("🔀 Chế độ xáo trộn:", this.isShuffleOn ? "Bật" : "Tắt");
+        
+        if (this.isShuffleOn) {
+            this.originalPlaylist = [...this.playlist]; // Lưu danh sách gốc
+            this.playlist = this.shuffleArray([...this.playlist]);
+            this.currentIndex = 0; // Reset về bài đầu trong danh sách xáo trộn
+        } else {
+            const currentSong = this.playlist[this.currentIndex]; // Lưu bài hát đang phát
+            this.playlist = [...this.originalPlaylist]; // Khôi phục danh sách gốc
+            this.currentIndex = this.playlist.findIndex(song => song.title === currentSong.title); // Giữ bài hát hiện tại
+        }
+    }
+    shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+    }
     async checkLikeStatus(title) {
         if (!title) return false;
         
@@ -555,6 +574,18 @@ class AudioPlayer {
     }
 
     nextTrack() {
+        if (!this.playlist || this.playlist.length === 0) return;
+        
+        if (this.isShuffleOn) {
+            let randomIndex;
+            do {
+                randomIndex = Math.floor(Math.random() * this.playlist.length);
+            } while (randomIndex === this.currentIndex); // Tránh lặp bài hát hiện tại
+            this.currentIndex = randomIndex;
+        }
+        
+        
+        this.playSong(this.currentIndex);
         if (Array.isArray(window.currentPlaylist) && window.currentPlaylist.length > 0) {
             // Kiểm tra nếu currentIndex không hợp lệ
             if (typeof window.currentIndex !== "number" || window.currentIndex < 0 || window.currentIndex >= window.currentPlaylist.length) {

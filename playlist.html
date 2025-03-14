@@ -208,45 +208,38 @@
         songList.appendChild(li);
     });
 }
-let audioPlayer;
-async function playSongByFilename(filename) {
-    const API_URL = "http://localhost:3000";
 
-    if (!audioPlayer) {
-        audioPlayer = new AudioPlayer(API_URL);
-    }
-
-    try {
-        const response = await fetch(`${API_URL}/song-by-filename/${encodeURIComponent(filename)}`);
-        const song = await response.json();
-
-        if (!response.ok || !song.url) {
-            throw new Error("Không tìm thấy bài hát!");
+        // Add playSong function to handle play button click
+        async function playSong(startIndex = 0) {
+            if (songs.length === 0) return;
+            await playSongByFilename(songs[startIndex].filename);
         }
 
-        // Đảm bảo URL đúng format `/play/Artist/Filename`
-        const songUrl = `${API_URL}/play/${encodeURIComponent(song.artist)}/${encodeURIComponent(song.filename)}`;
-        console.log("🎵 Đang phát nhạc:", songUrl);
+        let audioPlayer;
+        async function playSongByFilename(filename) {
+            const API_URL = "http://localhost:3000";
 
-        audioPlayer.loadTrack(songUrl, song.title || filename, song.artist || "Unknown Artist");
-    } catch (error) {
-        console.error("❌ Lỗi khi phát nhạc:", error);
-    }
-}
+            if (!audioPlayer) {
+                audioPlayer = new AudioPlayer(API_URL);
+            }
 
+            try {
+                const response = await fetch(`${API_URL}/song-by-filename/${encodeURIComponent(filename)}`);
+                const song = await response.json();
 
+                if (!response.ok || !song.url) {
+                    throw new Error("Không tìm thấy bài hát!");
+                }
 
+                // Đảm bảo URL đúng format `/play/Artist/Filename`
+                const songUrl = `${API_URL}/play/${encodeURIComponent(song.artist)}/${encodeURIComponent(song.filename)}`;
+                console.log("🎵 Đang phát nhạc:", songUrl);
 
-
-
-
+                audioPlayer.loadTrack(songUrl, song.title || filename, song.artist || "Unknown Artist");
+            } catch (error) {
+                console.error("❌ Lỗi khi phát nhạc:", error);
+            }
+        }
     </script>
-    
-    <div>
-        <h1 id="playlistTitle" class="text-4xl font-bold mt-6 mb-2"></h1>
-        <p id="songCount" class="text-gray-400 mb-4"></p>
-        <ul id="songsList" class="space-y-2"></ul>
-    </div>
-    
 </body>
 </html>
