@@ -38,8 +38,13 @@
             background: rgba(255, 255, 255, 0.08);
         }
         .playing {
-            background: rgba(99, 102, 241, 0.15);
-            border-left: 4px solid #6366f1;
+            background: rgba(99, 102, 241, 0.15); /* Nền trong suốt màu indigo */
+            border-left: 4px solid #6366f1; /* Viền trái màu indigo */
+            transform: translateX(10px); /* Dịch chuyển sang phải nhẹ */
+        }
+
+        .playing .text-white\/40 {
+            color: rgb(99, 102, 241); /* Số thứ tự chuyển sang màu indigo */
         }
 
         @keyframes slideIn {
@@ -53,7 +58,6 @@
 </head>
 <body class="bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white min-h-screen">
     <div class="playlist-backdrop"></div>
-    
     <div class="flex min-h-screen">
         <!-- Sidebar -->
         <div class="w-80 p-6 glass-card m-4 rounded-2xl animate-slide-in" style="animation-delay: 0.1s;">
@@ -65,13 +69,15 @@
             </a>
 
             <div class="text-center space-y-6">
-                <img id="playlistCover" alt="Ảnh playlist" 
-                     class="w-56 h-56 mx-auto rounded-2xl shadow-2xl transform transition hover:scale-105">
                 <h1 id="playlistTitle" class="text-3xl font-bold"></h1>
                 <p id="songCount" class="text-gray-400"></p>
+                <div class="text-center space-y-4">
+                    <h1 id="playlistTitle" class="text-3xl font-bold"></h1>
+                    <p id="playlistDescription" class="text-gray-400"></p>
+                </div>
                 
                 <div class="space-y-3">
-                    <button onclick="playSong(0)" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl flex items-center justify-center gap-2 transition-colors">
+                    <button onclick="playAllSongs()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl flex items-center justify-center gap-2 transition-colors">
                         <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M8 5v14l11-7z"/>
                         </svg>
@@ -83,7 +89,7 @@
                 </div>
             </div>
         </div>
-
+        
         <!-- Main Content -->
         <div class="flex-1 p-6">
             <div class="glass-card p-6 animate-slide-in" style="animation-delay: 0.2s;">
@@ -105,14 +111,26 @@
         let currentIndex = 0;
 
         document.addEventListener("DOMContentLoaded", async () => {
+            // Ensure AudioPlayer is defined
+            if (typeof AudioPlayer === 'undefined') {
+                console.error("❌ AudioPlayer is not defined!");
+                return;
+            }
+
             // Initialize audioPlayer when the page loads
             audioPlayer = new AudioPlayer(API_URL);
-            // audioPlayer.onEnd(() => handleNextTrack());
-            
+            window.player = audioPlayer;
+
             // Add keyboard controls
             document.addEventListener('keydown', (e) => {
-                if (e.code === 'ArrowRight') handleNextTrack();
-                if (e.code === 'ArrowLeft') handlePrevTrack();
+                if (e.code === 'ArrowRight') {
+                    handleNextTrack();
+                    playSong(currentIndex + 1); // Add this line
+                }
+                if (e.code === 'ArrowLeft') {
+                    handlePrevTrack();
+                    playSong(currentIndex - 1); // Add this line
+                }
             });
             
             const urlParams = new URLSearchParams(window.location.search);
@@ -127,6 +145,49 @@
             displaySongs();
         });
     
+        function playAllSongs() {
+            if (!window.player || !window.player.playSongByFilename) {
+                console.error("❌ Lỗi: Player chưa khởi tạo!");
+                return;
+            }
+
+            if (!window.player.playlist || window.player.playlist.length === 0) {
+                console.warn("⚠️ Không có bài hát trong playlist!");
+                return;
+            }
+
+            // Chơi bài hát đầu tiên trong danh sách
+            const firstSong = window.player.playlist[0];
+            window.player.playSongByFilename(firstSong.filename, 0);
+        }
+
+        async function playSong(index) {
+            try {
+                if (index < 0 || index >= songs.length) {
+                    throw new Error('Invalid song index');
+                }
+
+                if (!window.player) {
+                    console.warn("⚠️ Audio player not initialized, creating new instance...");
+                  
+                }
+
+                currentIndex = index;
+                const song = songs[index];
+
+                await window.player.playSong(index);
+                updateActiveSongUI();
+
+                // Update background with song artwork if available
+                if (song.artwork) {
+                    document.querySelector('.playlist-backdrop').style.backgroundImage = `url(${song.artwork})`;
+                }
+
+            } catch (error) {
+                console.error('❌ Error playing song:', error);
+                alert('Could not play song: ' + error.message);
+            }
+        }
 
         async function loadUserPlaylist(playlistId) {
     try {
@@ -153,7 +214,19 @@
             return;
         }
 
-        songs = [...playlistData.songs]; // ✅ Lưu danh sách bài hát vào mảng
+        // ✅ Hiển thị tên playlist và mô tả
+        document.getElementById("playlistTitle").textContent = playlistData.name;
+        document.getElementById("playlistDescription").textContent = playlistData.description || "Không có mô tả";
+
+        // ✅ Lưu danh sách bài hát với đầy đủ thông tin
+        songs = playlistData.songs.map(song => ({
+            title: song.title || "Không xác định",
+            artist: song.artist || "Không xác định",
+            filename: song.filename || "",
+            url: song.url || "#"
+        }));
+
+        console.log("🎵 Danh sách bài hát sau khi xử lý:", songs);
 
         if (audioPlayer && typeof audioPlayer.setPlaylist === "function") {
             audioPlayer.setPlaylist(songs);
@@ -162,15 +235,13 @@
             console.error("❌ Lỗi: AudioPlayer chưa khởi tạo hoặc setPlaylist không tồn tại!");
         }
 
+        displaySongs(); // ✅ Hiển thị danh sách bài hát trong UI
+
     } catch (error) {
         console.error("❌ Lỗi khi tải playlist:", error);
     }
 }
 
-
-
-
-    
         async function fetchSongDetails() {
             try {
                 if (songs.length === 0) return;
@@ -235,7 +306,7 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-4">
-                        <span class="text-sm text-white/40">03:45</span>
+                        <span class="text-sm text-white/40"></span>
                         <button onclick="playSongByFilename('${song.filename}', ${index})" 
                             class="opacity-0 group-hover:opacity-100 transition-opacity">
                             <svg class="w-8 h-8 text-white/60 hover:text-indigo-400 transition-colors" fill="currentColor" viewBox="0 0 24 24">
@@ -249,51 +320,42 @@
         }
 
         async function playSongByFilename(filename, index) {
-            try {
-                currentIndex = index || 0;
-                if (!audioPlayer) {
-                    audioPlayer = new AudioPlayer(API_URL);
-                }
+    try {
+        currentIndex = index >= 0 ? index : 0;
 
-                const response = await fetch(`${API_URL}/song-by-filename/${encodeURIComponent(filename)}`);
-                const song = await response.json();
-
-                if (!response.ok || !song.url) {
-                    throw new Error("Không tìm thấy bài hát!");
-                }
-
-                const songUrl = `${API_URL}/play/${encodeURIComponent(song.artist)}/${encodeURIComponent(song.filename)}`;
-                await audioPlayer.loadTrack(songUrl, song.title || filename, song.artist || "Chưa xác định");
-                
-                // Add next/prev handlers
-                audioPlayer.nextTrack();
-                audioPlayer.prevTrack();
-                
-                // Update playing state in UI
-                document.querySelectorAll('.song-item').forEach(item => item.classList.remove('playing'));
-                const currentSong = document.querySelector(`[onclick*="${filename}"]`).closest('.song-item');
-                currentSong.classList.add('playing');
-            } catch (error) {
-                console.error("❌ Lỗi khi phát nhạc:", error);
-                alert("Không thể phát bài hát này. Vui lòng thử lại sau!");
-            }
+        if (!audioPlayer) {
+            audioPlayer = new AudioPlayer(API_URL);
         }
-        function handleNextTrack() {
-    if (audioPlayer && typeof audioPlayer.nextTrack === "function") {
-        audioPlayer.nextTrack();
-    } else {
-        console.error("❌ Lỗi: nextTrack() không tồn tại trên audioPlayer!");
+
+        const response = await fetch(`${API_URL}/song-by-filename/${encodeURIComponent(filename)}`);
+        const song = await response.json();
+
+        if (!response.ok || !song.url) {
+            throw new Error("Không tìm thấy bài hát!");
+        }
+
+        const songUrl = `${API_URL}/play/${encodeURIComponent(song.artist)}/${encodeURIComponent(song.filename)}`;
+        await audioPlayer.loadTrack(songUrl, song.title || filename, song.artist || "Chưa xác định");
+
+        updateActiveSongUI(); // ✅ Cập nhật UI để làm nổi bật bài hát đang phát
+
+    } catch (error) {
+        console.error("❌ Lỗi khi phát nhạc:", error);
     }
 }
-
-function handlePrevTrack() {
-    if (audioPlayer && typeof audioPlayer.prevTrack === "function") {
-        audioPlayer.prevTrack();
-    } else {
-        console.error("❌ Lỗi: prevTrack() không tồn tại trên audioPlayer!");
+function updateActiveSongUI() {
+    document.querySelectorAll('.song-item').forEach(item => item.classList.remove('playing'));
+    const songItems = document.querySelectorAll('.song-item');
+    if (songItems[currentIndex]) {
+        songItems[currentIndex].classList.add('playing');
+        // Cuộn đến bài hát đang phát
+        songItems[currentIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 }
+document.addEventListener('trackChanged', (e) => {
+    updatePlayingState(e.detail.currentIndex);
+});
 
-    </script>
+</script>
 </body>
 </html>

@@ -471,18 +471,20 @@ app.get("/playlist/:id", authenticateToken, async (req, res) => {
         const playlistId = req.params.id;
 
         // Tìm playlist theo ID
-        const playlist = await Playlist.findById(playlistId);
+        const playlist = await Playlist.findById(playlistId).populate("songs"); // 🔥 Populate để lấy thông tin chi tiết
+
         if (!playlist) {
             return res.status(404).json({ message: "Playlist không tồn tại!" });
         }
 
         // Trả về danh sách bài hát đúng định dạng
-        const songList = playlist.songs.map(title => ({
-            title: title, // Giữ nguyên tên bài hát
-            artist: "Chưa có dữ liệu",
-            album: "Chưa có dữ liệu",
-            duration: "Chưa có dữ liệu",
-            url: `#`
+        const songList = playlist.songs.map(song => ({
+            title: song.title,
+            artist: song.artist || "Không rõ",
+            album: song.album || "Không rõ",
+            duration: song.duration || "Không rõ",
+            filename: song.filename, // ✅ Thêm filename để phát nhạc
+            url: `/play/${encodeURIComponent(song.filename)}`
         }));
 
         res.json({
@@ -492,7 +494,7 @@ app.get("/playlist/:id", authenticateToken, async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Lỗi khi lấy playlist theo ID:", error);
+        console.error("❌ Lỗi khi lấy playlist theo ID:", error);
         res.status(500).json({ message: "Lỗi server." });
     }
 });

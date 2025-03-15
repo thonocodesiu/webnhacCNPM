@@ -74,8 +74,13 @@
         }
 
         .playing {
-            background: rgba(59, 130, 246, 0.2);
-            border-left: 4px solid #3b82f6;
+            background: rgba(99, 102, 241, 0.15); /* Nền trong suốt màu indigo */
+            border-left: 4px solid #6366f1; /* Viền trái màu indigo */
+            transform: translateX(10px); /* Dịch chuyển sang phải nhẹ */
+        }
+
+        .playing .text-white\/40 {
+            color: rgb(99, 102, 241); /* Số thứ tự chuyển sang màu indigo */
         }
 
         @keyframes fadeIn {
@@ -130,6 +135,12 @@
             <div class="lg:col-span-3 animate-fade-in" style="animation-delay: 0.3s;">
                 <div class="glass-card p-6">
                     <ul id="playlist" class="space-y-2">
+                        <div class="text-center mt-6">
+                            <h2 class="text-lg font-semibold text-gray-300">Đang phát:</h2>
+                            <h1 id="nowPlayingTitle" class="text-2xl font-bold text-white mt-1">---</h1>
+                            <p id="nowPlayingArtist" class="text-gray-400">---</p>
+                        </div>
+                        
                         <!-- Songs will be loaded here -->
                     </ul>
                 </div>
@@ -267,36 +278,53 @@
         }
 
         async function playSong(index) {
-            try {
-                // Ensure `window.player` is initialized
-                if (!window.player) {
-                    console.warn("⚠️ Audio player is not initialized! Initializing...");
-                    window.player = new AudioPlayer(API_URL);
-                }
-
-                const song = songs[index];
-                if (!song) {
-                    throw new Error('Invalid song index');
-                }
-
-                await window.player.playSong(index);
-                updatePlayingState(index);
-            } catch (error) {
-                console.error('Error playing song:', error);
-                alert('Could not play song: ' + error.message);
-            }
+    try {
+        if (!window.player) {
+            console.warn("⚠️ Audio player is not initialized! Initializing...");
+            window.player = new AudioPlayer(API_URL);
         }
+
+        const song = songs[index];
+        if (!song) {
+            throw new Error('Invalid song index');
+        }
+
+        await window.player.playSong(index);
+        updatePlayingState(index); // ✅ Cập nhật UI
+    } catch (error) {
+        console.error('Error playing song:', error);
+        alert('Could not play song: ' + error.message);
+    }
+}
+
 
         // Add this helper function
         function updatePlayingState(index) {
-            document.querySelectorAll('.song-item').forEach((item, i) => {
-                if (i === index) {
-                    item.classList.add('playing');
-                } else {
-                    item.classList.remove('playing');
-                }
-            });
+    document.querySelectorAll('.song-item').forEach((item, i) => {
+        item.classList.remove('playing');
+        if (i === index) {
+            item.classList.add('playing');
+            // Cuộn đến bài hát đang phát
+            item.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
+    });
+
+    // Cập nhật tiêu đề bài hát đang phát
+    const nowPlayingTitle = document.getElementById("nowPlayingTitle");
+    const nowPlayingArtist = document.getElementById("nowPlayingArtist");
+
+    if (nowPlayingTitle && nowPlayingArtist) {
+        nowPlayingTitle.textContent = songs[index].title;
+        nowPlayingArtist.textContent = songs[index].artist;
+    }
+
+    // Cuộn đến bài hát đang phát
+    const currentSongElement = document.querySelectorAll('.song-item')[index];
+    if (currentSongElement) {
+        currentSongElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+}
+
 
         // Update the DOMContentLoaded event listener
         document.addEventListener('DOMContentLoaded', async () => {
@@ -372,6 +400,11 @@
                 });
             }
         });
+
+        document.addEventListener('trackChanged', (e) => {
+    updatePlayingState(e.detail.currentIndex);
+});
+
     </script>
 </body>
 </html>

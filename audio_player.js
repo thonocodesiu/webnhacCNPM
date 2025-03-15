@@ -149,27 +149,9 @@ class AudioPlayer {
                 </div>
             </div>
             
-            <!-- Success Notification -->
-            <div id="successNotification" class="fixed top-4 right-4 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg transform translate-x-full opacity-0 transition-all duration-500 flex items-center">
-                <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-                <span class="font-medium">Đã thêm vào playlist!</span>
-            </div>
-            
             <!-- Notification System -->
-            <div id="notificationSystem" class="fixed top-4 right-4 z-50 space-y-4">
-                <!-- Success Notification -->
-                <div id="successNotification" class="transform translate-x-full opacity-0 transition-all duration-500 flex items-center bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg">
-                    <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    <span class="font-medium notification-message">Đã thêm vào playlist!</span>
-                </div>
-            </div>`
-               ;
+            <div id="notificationSystem" class="fixed top-4 right-4 z-50 space-y-4"></div>`;
 
-        
         const container = document.createElement("div");
         container.innerHTML = playerHTML;
         document.body.appendChild(container);
@@ -573,96 +555,54 @@ class AudioPlayer {
         });
     }
 
-    setPlaylist(songs, startIndex = 0) {
-        this.playlist = songs;
-        this.currentIndex = startIndex;
+    updatePlayingState(index) {
+        if (!this.playlist || this.playlist.length === 0) return;
+    
+        // Xóa class 'playing' khỏi tất cả bài hát
+        document.querySelectorAll('.song-item').forEach(item => item.classList.remove('playing'));
+    
+        // Kiểm tra phần tử có tồn tại không
+        const songItems = document.querySelectorAll('.song-item');
+        if (songItems[index]) {
+            songItems[index].classList.add('playing');
+    
+            // Cuộn đến bài hát đang phát
+            songItems[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    
+            // Cập nhật tiêu đề bài hát đang phát
+            const nowPlayingTitle = document.getElementById("nowPlayingTitle");
+            const nowPlayingArtist = document.getElementById("nowPlayingArtist");
+    
+            if (nowPlayingTitle && nowPlayingArtist) {
+                nowPlayingTitle.textContent = this.playlist[index].title;
+                nowPlayingArtist.textContent = this.playlist[index].artist;
+            }
+        } else {
+            console.warn("⚠️ Không tìm thấy phần tử bài hát để cập nhật UI!");
+        }
     }
-
+    
     nextTrack() {
         if (!this.playlist || this.playlist.length === 0) return;
         
-        if (this.isShuffleOn) {
-            let randomIndex;
-            do {
-                randomIndex = Math.floor(Math.random() * this.playlist.length);
-            } while (randomIndex === this.currentIndex); // Tránh lặp bài hát hiện tại
-            this.currentIndex = randomIndex;
-        }
-        
-        
-        this.playSong(this.currentIndex);
-        if (Array.isArray(window.currentPlaylist) && window.currentPlaylist.length > 0) {
-            // Kiểm tra nếu currentIndex không hợp lệ
-            if (typeof window.currentIndex !== "number" || window.currentIndex < 0 || window.currentIndex >= window.currentPlaylist.length) {
-                console.error("❌ Index bài hát không hợp lệ! Reset về 0.");
-                window.currentIndex = 0; // Reset về bài đầu tiên nếu lỗi
-            }
+        this.currentIndex = (this.currentIndex + 1) % this.playlist.length;
+        this.playSongByFilename(this.currentIndex);
     
-            // Tăng index
-            window.currentIndex = (window.currentIndex + 1) % window.currentPlaylist.length;
-            const nextSong = window.currentPlaylist[window.currentIndex];
-    
-            if (!nextSong) {
-                console.error("❌ Không tìm thấy bài hát tiếp theo!");
-                return;
-            }
-    
-            console.log("⏭ Phát bài tiếp theo:", nextSong.title);
-            playSong(window.currentIndex);
-        } else {
-            if (!this.playlist || this.playlist.length === 0) return;
-            this.currentIndex = (this.currentIndex + 1) % this.playlist.length;
-            const nextSong = this.playlist[this.currentIndex];
-    
-            if (!nextSong) {
-                console.error("❌ Không tìm thấy bài hát tiếp theo trong danh sách gốc!");
-                return;
-            }
-    
-            this.loadTrack(nextSong.src, nextSong.title, nextSong.artist);
-            document.dispatchEvent(new CustomEvent('trackChanged', { 
-                detail: { currentIndex: this.currentIndex, direction: 'next' }
-            }));
-            return this.currentIndex;
-        }
+        // Gửi sự kiện trackChanged để cập nhật UI
+        document.dispatchEvent(new CustomEvent('trackChanged', { detail: { currentIndex: this.currentIndex } }));
     }
     
     prevTrack() {
-        if (Array.isArray(window.currentPlaylist) && window.currentPlaylist.length > 0) {
-            // Kiểm tra nếu currentIndex không hợp lệ
-            if (typeof window.currentIndex !== "number" || window.currentIndex < 0 || window.currentIndex >= window.currentPlaylist.length) {
-                console.error("❌ Index bài hát không hợp lệ! Reset về bài cuối.");
-                window.currentIndex = window.currentPlaylist.length - 1;
-            }
+        if (!this.playlist || this.playlist.length === 0) return;
     
-            // Giảm index
-            window.currentIndex = (window.currentIndex - 1 + window.currentPlaylist.length) % window.currentPlaylist.length;
-            const prevSong = window.currentPlaylist[window.currentIndex];
+        this.currentIndex = (this.currentIndex - 1 + this.playlist.length) % this.playlist.length;
+        this.playSongByFilename(this.currentIndex);
     
-            if (!prevSong) {
-                console.error("❌ Không tìm thấy bài hát trước đó!");
-                return;
-            }
-    
-            console.log("⏮ Quay lại bài trước:", prevSong.title);
-            playSong(window.currentIndex);
-        } else {
-            if (!this.playlist || this.playlist.length === 0) return;
-            this.currentIndex = (this.currentIndex - 1 + this.playlist.length) % this.playlist.length;
-            const prevSong = this.playlist[this.currentIndex];
-    
-            if (!prevSong) {
-                console.error("❌ Không tìm thấy bài hát trước đó trong danh sách gốc!");
-                return;
-            }
-    
-            this.loadTrack(prevSong.src, prevSong.title, prevSong.artist);
-            document.dispatchEvent(new CustomEvent('trackChanged', { 
-                detail: { currentIndex: this.currentIndex, direction: 'prev' }
-            }));
-            return this.currentIndex;
-        }
+        // Gửi sự kiện trackChanged để cập nhật UI
+        document.dispatchEvent(new CustomEvent('trackChanged', { detail: { currentIndex: this.currentIndex } }));
     }
+    
+    
     
 
     cleanup() {
@@ -678,30 +618,39 @@ class AudioPlayer {
         clearInterval(this.progressInterval);
     }
     setPlaylist(playlist) {
-        this.playlist = playlist;
-        this.currentIndex = 0; // Reset index về bài đầu tiên
+        if (!Array.isArray(playlist) || playlist.length === 0) {
+            console.warn("⚠️ Không thể gán playlist, danh sách bài hát rỗng!");
+            return;
+        }
+    
+        this.playlist = [...playlist]; // ✅ Sao chép mảng để tránh lỗi tham chiếu
+        this.currentIndex = 0; // ✅ Reset index về bài đầu tiên
+    
+        console.log("✅ Playlist đã được gán:", this.playlist);
     }
+    
 
-    playSongByFilename(filename) {
-        const API_URL = "http://localhost:3000"; // Cập nhật nếu dùng ngrok
-
-        fetch(`${API_URL}/song-by-filename/${encodeURIComponent(filename)}`)
-            .then(response => response.json())
-            .then(song => {
-                if (!song || !song.filename) {
-                    console.error("❌ Không tìm thấy bài hát!", song);
-                    return;
-                }
-
-                const songUrl = `${API_URL}/play/${encodeURIComponent(song.artist)}/${encodeURIComponent(song.filename)}`;
-                console.log("🎵 Đang phát nhạc:", songUrl);
-
-                this.audio.src = songUrl;
-                this.audio.play().catch(error => console.error("❌ Lỗi phát nhạc:", error));
-            })
-            .catch(error => console.error("❌ Lỗi khi gọi API:", error));
+    async playSongByFilename(index) {
+        try {
+            const song = this.playlist[index];
+            if (!song) {
+                console.warn("⚠️ Bài hát không tồn tại trong playlist.");
+                return;
+            }
+    
+            const songUrl = `${this.apiUrl}/play/${encodeURIComponent(song.artist)}/${encodeURIComponent(song.filename)}`;
+            await this.loadTrack(songUrl, song.title, song.artist);
+    
+            this.currentIndex = index;
+            
+            // Cập nhật UI
+            this.updatePlayingState(index);
+        } catch (error) {
+            console.error("❌ Lỗi khi phát bài hát:", error);
+        }
     }
-
+    
+    
     
     async pause() {
     try {
@@ -1142,4 +1091,18 @@ setarray(songs) {
     console.log("✅ Playlist đã được gán:", this.playlist);
 }
 
+    updateSongItemUI(currentSongId) {
+        // Remove 'playing' class from all song items
+        document.querySelectorAll('.song-item').forEach(item => {
+            item.classList.remove('playing');
+            item.classList.remove('bg-gray-800');
+        });
+
+        // Add 'playing' class to current song
+        const currentItem = document.querySelector(`[data-song-id="${currentSongId}"]`);
+        if (currentItem) {
+            currentItem.classList.add('playing');
+            currentItem.classList.add('bg-gray-800');
+        }
+    }
 }
