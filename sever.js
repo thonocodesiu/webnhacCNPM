@@ -609,3 +609,31 @@ app.get('/api/status', (req, res) => {
 app.use("/covers", express.static(COVERS_PATH));
 
 app.listen(PORT, () => console.log(`✅ Server chạy tại http://localhost:${PORT}`));
+//SEARCH
+app.get("/search", async (req, res) => {
+    try {
+        const { query } = req.query;
+        if (!query) {
+            return res.status(400).json({ message: "⚠️ Vui lòng nhập từ khóa tìm kiếm!" });
+        }
+
+        // Tìm kiếm bài hát theo title, artist hoặc album (không phân biệt hoa thường)
+        const songs = await Song.find({
+            $or: [
+                { title: { $regex: query, $options: "i" } },
+                { artist: { $regex: query, $options: "i" } },
+                { album: { $regex: query, $options: "i" } }
+            ]
+        });
+       
+        if (songs.length === 0) {
+            return res.status(404).json({ message: "❌ Không tìm thấy bài hát nào!" });
+        }
+
+        res.json(songs);
+    } catch (error) {
+        console.error("❌ Lỗi khi tìm kiếm bài hát:", error);
+        res.status(500).json({ message: "Lỗi server khi tìm kiếm bài hát!" });
+    }
+});
+
